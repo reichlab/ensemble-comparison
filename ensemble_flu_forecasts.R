@@ -65,6 +65,11 @@ median_ensemble <- forecast_data |>
   hubEnsembles::simple_ensemble(agg_fun = "median", model_id="median-ensemble") |>
   arrange(unit)
 
+lp_normal <- forecast_data |>
+  filter(model_id != "Flusight-baseline") |>
+  hubEnsembles::linear_pool(n_samples = 1e5, model_id="lp-normal") |>
+  arrange(unit)
+  
 ensemble_forecasts <- zoltar_connection |> 
   do_zoltar_query(project_url, query_type ="forecasts", 
                   models = "Flusight-ensemble", 
@@ -93,8 +98,23 @@ combined_ensembles <- ensemble_forecasts |>
   rbind(mean_ensemble, median_ensemble)
 
 
+source("R/generate_flu_ensemble_single_date.R")
 
+actual_mean <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                  origin_dates, include_baseline=FALSE,
+                                  ensemble_type="mean", dist_type=NULL) 
+                                  
+actual_median <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                  origin_dates, include_baseline=FALSE,
+                                  ensemble_type="median", dist_type=NULL) 
 
+actual_lp_norm <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                  origin_dates, include_baseline=FALSE,
+                                  ensemble_type="linear_pool", dist_type=NULL) 
+                                  
+expect_equal(select(mean_ensemble, -season), actual_mean)
+expect_equal(select(median_ensemble, -season), actual_median)
+expect_equal(select(lp_normal, -season), actual_lp_norm)
 
 
 
