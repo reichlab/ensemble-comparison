@@ -69,7 +69,14 @@ lp_normal <- forecast_data |>
   filter(model_id != "Flusight-baseline") |>
   hubEnsembles::linear_pool(n_samples = 1e5, model_id="lp-normal") |>
   arrange(unit)
-  
+
+# FIX ME:  For dist = 'lnorm', all qs must be positive
+#lp_normal <- forecast_data |>
+#  filter(model_id != "Flusight-baseline") |>
+#  hubEnsembles::linear_pool(n_samples = 1e5, model_id="lp-lognormal", 
+#                            lower_tail_dist="lnorm", upper_tail_dist="lnorm") |>
+#  arrange(unit)
+
 ensemble_forecasts <- zoltar_connection |> 
   do_zoltar_query(project_url, query_type ="forecasts", 
                   models = "Flusight-ensemble", 
@@ -111,6 +118,11 @@ actual_median <- generate_flu_ensemble_single_date(zoltar_connection, project_ur
 actual_lp_norm <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                   origin_dates, include_baseline=FALSE,
                                   ensemble_type="linear_pool", dist_type=NULL) 
+                                  
+# FIX ME:  For dist = 'lnorm', all qs must be positive
+# actual_lp_lognorm <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
+#                                   origin_dates, include_baseline=FALSE,
+#                                   ensemble_type="linear_pool", dist_type="lnorm") 
                                   
 expect_equal(select(mean_ensemble, -season), actual_mean)
 expect_equal(select(median_ensemble, -season), actual_median)
