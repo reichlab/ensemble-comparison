@@ -75,6 +75,7 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                       model_id=paste(ensemble_type, "ensemble", sep="-"),
                       task_id_cols = task_id_cols)
   }
-
+  
+  ensemble_outputs <- mutate(value = ifelse(ensemble_outputs, value < 0, 0, value))
   return (ensemble_outputs)
 }
