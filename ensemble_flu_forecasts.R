@@ -8,6 +8,8 @@ library(stringr)
 library(hubUtils)
 library(hubEnsembles)
 
+source("R/generate_flu_ensemble_single_date.R")
+
 # parallelize code
 library(doParallel)
 num_cores <- detectCores(logical=TRUE)
@@ -58,6 +60,10 @@ forecast_data
 flu_locations <- forecast_data$unit |>
   unique() |> sort()
 
+flu_quantiles <- forecast_data$output_type_id |>
+  unique() |> sort()
+
+# Function testing
 mean_ensemble <- forecast_data |>
   filter(model_id != "Flusight-baseline") |>
   hubEnsembles::simple_ensemble(agg_fun = "mean", model_id="mean-ensemble") |>
@@ -108,8 +114,6 @@ combined_ensembles <- ensemble_forecasts |>
   rbind(mean_ensemble, median_ensemble)
 
 
-source("R/generate_flu_ensemble_single_date.R")
-
 actual_mean <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                   origin_dates, include_baseline=FALSE,
                                   ensemble_type="mean", dist_type=NULL) 
@@ -132,4 +136,47 @@ expect_equal(select(median_ensemble, -season), actual_median)
 expect_equal(select(lp_normal, -season), actual_lp_norm)
 
 
+# Generate ensembles
+flu_dates_21_22 <- as.Date("2022-01-24") + weeks(0:21)
+flu_dates_22_23 <- as.Date("2022-10-17") + weeks(0:30)
+all_flu_dates <- c(flu_dates_21_22, flu_dates_22_23)
+
+flu_mean_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vector) {
+  generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                    dates_vector, include_baseline=FALSE,
+                                    ensemble_type="mean", dist_type=NULL) 
+})
+                                    
+flu_mean_22_23 <- purrr::map_dfr(flu_dates_22_23, .f = function(dates_vector) {
+  generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                    dates_vector, include_baseline=FALSE,
+                                    ensemble_type="mean", dist_type=NULL) 
+})
+
+flu_median_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vector) {
+  generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                    dates_vector, include_baseline=FALSE,
+                                    ensemble_type="median", dist_type=NULL) 
+})
+                                    
+flu_median_22_23 <- purrr::map_dfr(flu_dates_22_23, .f = function(dates_vector) {
+  generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                    dates_vector, include_baseline=FALSE,
+                                    ensemble_type="median", dist_type=NULL) 
+})
+
+flu_linear_pool_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vector) {
+  generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                    dates_vector, include_baseline=FALSE,
+                                    ensemble_type="linear_pool", dist_type=NULL) 
+}) # fails at index 6
+                                    
+flu_linear_pool_22_23 <- purrr::map_dfr(flu_dates_22_23, .f = function(dates_vector) {
+  generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                    dates_vector, include_baseline=FALSE,
+                                    ensemble_type="linear_pool", dist_type=NULL) 
+}) # fails at index 23
+
+readr::write_rds(flu_linear_pool_21_22, "data/flu_linear_pool-ensemble_21-22.rds", "xz", compression = 9L)
+readr::write_rds(flu_linear_pool_22_23, "data/flu_linear_pool-ensemble_22-23.rds", "xz", compression = 9L)
 
