@@ -15,7 +15,10 @@
 #'   to be used on the flu forecasts. Can be "mean", "median", or "linear_pool".
 #' @param dist_type `character` string that specifies the type of distribution 
 #'   to use when calculating the tails for a linear pool ensemble. 
-#'   Defaults to NULL. This argument is ignored for Vincentization.  IN PROGRESS
+#'   Defaults to NULL. This argument is ignored for Vincentization.  
+#' @param ... parameters that are passed to `distfromq::make_q_fun`, specifying
+#'   details of how to estimate a quantile function from provided quantile levels 
+#'   and quantile values.
 #'
 #' @return a `model_out_tbl` object of ensemble predictions for flu hospitalizations.
 #' @export
@@ -23,7 +26,7 @@
 #' @examples
 generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                                               origin_date, include_baseline=FALSE,
-                                              ensemble_type, dist_type=NULL) {
+                                              ensemble_type, dist_type=NULL, ...) {
   forecast_data <- zoltar_connection |>
     do_zoltar_query(project_url, query_type ="forecasts",
                     models = NULL,
@@ -55,14 +58,14 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
 
   # Ensemble forecasts
   if (ensemble_type == "linear_pool") {
-    if (is.null(dist_type)) dist_type == "norm"
+    if (is.null(dist_type)) dist_type = "norm"
     lp_type <- ifelse(dist_type == "lnorm", "lognormal", "normal")
     ensemble_outputs <- forecast_data |>
       linear_pool(weights=NULL, weights_col_name=NULL,
                   model_id=paste("lp", lp_type, sep="-"),
                   task_id_cols = task_id_cols,
-#                  lower_tail_dist=dist_type,
-#                  upper_tail_dist=dist_type,
+                  lower_tail_dist=dist_type,
+                  upper_tail_dist=dist_type,
                   n_samples = 1e5)
 
   } else {
