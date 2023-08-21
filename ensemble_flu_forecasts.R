@@ -55,6 +55,9 @@ forecast_data <- forecast_data |>
                   remove_empty = TRUE) 
 forecast_data
 
+flu_locations <- forecast_data$unit |>
+  unique() |> sort()
+
 mean_ensemble <- forecast_data |>
   filter(model_id != "Flusight-baseline") |>
   hubEnsembles::simple_ensemble(agg_fun = "mean", model_id="mean-ensemble") |>
