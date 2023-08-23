@@ -27,7 +27,7 @@
 generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                                               origin_date, include_baseline=FALSE,
                                               ensemble_type, dist_type=NULL, ...) {
-  forecast_data <- zoltar_connection |>
+  raw_forecasts <- zoltar_connection |>
     do_zoltar_query(project_url, query_type ="forecasts",
                     models = NULL,
                     units = NULL,
@@ -36,16 +36,18 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                     types = "quantile")
 
   if (!include_baseline) {
-    forecast_data <- forecast_data |>
+    raw_forecasts <- raw_forecasts |>
       dplyr::filter(model != "Flusight-baseline")
   }
 
-  task_id_cols <- c("timezero", "unit", "horizon", "target")
+  task_id_cols <- c("forecast_date", "location", "horizon", "target_variable")
 
   # Format forecasts
-  forecast_data <- forecast_data |>
+  forecast_data <- raw_forecasts |>
     dplyr::filter(model != "Flusight-ensemble") |>
-    tidyr::separate(target, sep=2, convert=TRUE, into=c("horizon", "target")) |>
+    tidyr::separate(target, sep=" ", convert=TRUE, into=c("horizon", "temporal_resolution", "ahead", "target_variable"), extra="merge") |>
+    dplyr::rename(location = unit, forecast_date = timezero) |>
+    dplyr::mutate(target_end_date=ceiling_date(forecast_date, "weeks")-days(1)) |>
     as_model_out_tbl(model_id_col = "model",
                     output_type_col = "class",
                     output_type_id_col = "quantile",
@@ -54,7 +56,8 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                     trim_to_task_ids = FALSE,
                     hub_con = NULL,
                     task_id_cols = task_id_cols,
-                    remove_empty = TRUE)
+                    remove_empty = TRUE) |>
+    dplyr::select(-season, -ahead)
 
   # Ensemble forecasts
   if (ensemble_type == "linear_pool") {
@@ -76,6 +79,9 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                       task_id_cols = task_id_cols)
   }
   
-  ensemble_outputs <- mutate(ensemble_outputs, value = ifelse(value < 0, 0, value))
+  ensemble_outputs <- ensemble_outputs |> 
+    dplyr::rename(model = model_id, type = output_type, quantile = output_type_id) |>
+    dplyr::mutate(ensemble_outputs, value = ifelse(value < 0, 0, value))
+  
   return (ensemble_outputs)
 }
