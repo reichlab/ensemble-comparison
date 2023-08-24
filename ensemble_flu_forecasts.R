@@ -8,7 +8,7 @@ library(stringr)
 library(hubUtils)
 library(hubEnsembles)
 
-source("R/generate_flu_ensemble_single_date.R")
+source("R/flu_truth_forecasts_functions.R")
 
 # parallelize code
 library(doParallel)
@@ -32,30 +32,13 @@ the_models <- models(zoltar_connection, project_url)
 # str(the_models)
 
 origin_dates <-  "2023-05-15"
-# Query forecasts
-forecast_data <- zoltar_connection |> 
-  do_zoltar_query(project_url, query_type ="forecasts", 
-#                  models = "docs forecast model", 
-#                  units = c("loc1", "loc2"), 
-#                  targets = "week ahead incident hospitalizations",
-                  timezeros = origin_dates, 
-                  types = "quantile")
-
 task_id_cols <- c("timezero", "unit", "horizon", "target")
-# Format forecasts
-forecast_data <- forecast_data |>
-  dplyr::filter(model != "Flusight-ensemble") |>
-  tidyr::separate(target, sep=2, convert=TRUE, into=c("horizon", "target")) |>
-  as_model_out_tbl(model_id_col = "model",
-                  output_type_col = "class",
-                  output_type_id_col = "quantile",
-                  value_col = "value",
-                  sep = "-",
-                  trim_to_task_ids = FALSE,
-                  hub_con = NULL,
-                  task_id_cols = task_id_cols,
-                  remove_empty = TRUE) 
-forecast_data
+
+# Get/format forecasts
+forecast_data <- get_flu_forecasts_single_date(zoltar_connection, project_url, origin_dates) |>
+  dplyr::filter(model_id != "Flusight-ensemble") |>
+  dplyr::rename(model = model_id, type = output_type, quantile = output_type_id) |>
+  dplyr::select(all_of(names(forecast_data)))
 
 flu_locations <- forecast_data$unit |>
   unique() |> sort()
@@ -86,38 +69,10 @@ lp_normal <- forecast_data |>
 #                            lower_tail_dist="lnorm", upper_tail_dist="lnorm") |>
 #  arrange(unit)
 
-ensemble_forecasts <- zoltar_connection |> 
-  do_zoltar_query(project_url, query_type ="forecasts", 
-                  models = "Flusight-ensemble", 
-                  timezeros = origin_dates, 
-                  types = "quantile") |>
-  tidyr::separate(target, sep=2, convert=TRUE, into=c("horizon", "target")) |>
-  as_model_out_tbl(model_id_col = "model",
-                  output_type_col = "class",
-                  output_type_id_col = "quantile",
-                  value_col = "value",
-                  sep = "-",
-                  trim_to_task_ids = FALSE,
-                  hub_con = NULL,
-                  task_id_cols = task_id_cols,
-                  remove_empty = TRUE) 
-ensemble_forecasts <-arrange(ensemble_forecasts,unit)
-
-#"forecast_date","target","target_end_date","location","type","quantile","value"
-
-#  dplyr::mutate(target_end_date=ceiling_date(timezero, "weeks")-days(1))
-
-testthat::expect_equal(mean_ensemble,ensemble_forecasts)
-testthat::expect_equal(median_ensemble,ensemble_forecasts)
-
-combined_ensembles <- ensemble_forecasts |> 
-  rbind(mean_ensemble, median_ensemble)
-
-
 actual_mean <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                   origin_dates, include_baseline=FALSE,
                                   ensemble_type="mean", dist_type=NULL) 
-                                  
+                                 
 actual_median <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                   origin_dates, include_baseline=FALSE,
                                   ensemble_type="median", dist_type=NULL) 
@@ -139,7 +94,11 @@ expect_equal(select(lp_normal, -season), actual_lp_norm)
 # Generate ensembles
 flu_dates_21_22 <- as.Date("2022-01-24") + weeks(0:21)
 flu_dates_22_23 <- as.Date("2022-10-17") + weeks(0:30)
-all_flu_dates <- c(flu_dates_21_22, flu_dates_22_23)
+flu_dates_all <- c(flu_dates_21_22, flu_dates_22_23)
+
+flu_truth_all <- purrr::map_dfr(flu_dates_all, .f = function(dates_vector) {
+  get_flu_truth_single_date(zoltar_connection, project_url, dates_vector) 
+})
 
 flu_mean_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vector) {
   generate_flu_ensemble_single_date(zoltar_connection, project_url,
@@ -169,14 +128,69 @@ flu_linear_pool_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vec
   generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                     dates_vector, include_baseline=FALSE,
                                     ensemble_type="linear_pool", dist_type=NULL) 
-}) # fails at index 6
+})
                                     
 flu_linear_pool_22_23 <- purrr::map_dfr(flu_dates_22_23, .f = function(dates_vector) {
   generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                     dates_vector, include_baseline=FALSE,
                                     ensemble_type="linear_pool", dist_type=NULL) 
-}) # fails at index 23
+})
 
 readr::write_rds(flu_linear_pool_21_22, "data/flu_linear_pool-ensemble_21-22.rds", "xz", compression = 9L)
 readr::write_rds(flu_linear_pool_22_23, "data/flu_linear_pool-ensemble_22-23.rds", "xz", compression = 9L)
 
+toy_data <- generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                  flu_dates_21_22[6], include_baseline=FALSE,
+                                  ensemble_type="linear_pool", dist_type=NULL) 
+
+test_data <- zoltar_connection |>
+  do_zoltar_query(project_url, query_type ="forecasts",
+                  models = NULL,
+                  units = NULL,
+                  targets = NULL,
+                  timezeros = flu_dates_21_22[6],
+                  types = "quantile") |>
+  dplyr::filter(model != "Flusight-ensemble") |>
+  tidyr::separate(target, sep=2, convert=TRUE, into=c("horizon", "target")) |>
+  as_model_out_tbl(model_id_col = "model",
+                  output_type_col = "class",
+                  output_type_id_col = "quantile",
+                  value_col = "value",
+                  sep = "-",
+                  trim_to_task_ids = FALSE,
+                  hub_con = NULL,
+                  task_id_cols = task_id_cols,
+                  remove_empty = TRUE) 
+
+test_data |>
+    dplyr::filter(model_id == "LosAlamos_NAU-CModel_Flu", 
+                  timezero == as.Date("2022-02-28"), unit=="15", horizon==1) |>
+    dplyr::mutate(value = round(value, 10)) |>
+    pull(value)
+# seems to be an issue with too many small values or exact zero values
+
+  quantile_levels <- unique(test_data$output_type_id)
+  agg_args <- c(list(x = quote(.data[["pred_qs"]]), probs = quantile_levels))
+
+test_data |>
+#    dplyr::mutate(value = round(value, 8)) |>
+    tidyr::separate(target, sep=" ", convert=TRUE, into=c("temporal_resolution", "ahead", "target_variable"), extra="merge") |>
+    dplyr::rename(location = unit, forecast_date = timezero) |>
+    dplyr::group_by(model_id, dplyr::across(dplyr::all_of(task_id_cols))) |>
+    dplyr::summarize(
+      pred_qs = list(distfromq::make_q_fn(
+        ps = output_type_id,
+        qs = value,
+        lower_tail_dist = "norm", 
+        upper_tail_dist = "norm")(seq(from = 0, to = 1, length.out = 1e4 + 2)[2:1e4])),
+      .groups = "drop") |>
+    tidyr::unnest(pred_qs) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(task_id_cols))) |>
+    dplyr::summarize(
+      output_type_id= list(quantile_levels),
+      value = list(do.call(Hmisc::wtd.quantile, args = agg_args)),
+      .groups = "drop") |>
+    tidyr::unnest(cols = tidyselect::all_of(c("output_type_id", "value"))) |>
+    dplyr::mutate(output_type = "quantile", .before = output_type_id) |>
+    dplyr::ungroup() 
+  
