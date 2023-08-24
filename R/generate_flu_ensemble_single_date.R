@@ -1,3 +1,36 @@
+#' Pulls truth data for incident flu hospitalizations from zoltar and
+#' formats the data to be fed into `covidHubUtils::score_forecasts()`
+#'
+#' @param zoltar_connection a connection through which to access zoltar
+#' @param project_url `character` string of the URL for these zoltar project 
+#'   from which to query the component forecasts
+#' @param origin_date `character` string that specifies the date on which
+#'   the component forecasts were made that should be used for the ensemble
+#'
+#' @return a `data.frame` of truth data for flu hospitalizations with columns:
+#'   model, target_variable, target_end_date, location, value
+#' @export
+#'
+#' @examples
+get_flu_truth_single_date <- function(zoltar_connection, project_url, origin_date) {
+  raw_truth <- zoltar_connection |>
+    do_zoltar_query(project_url, query_type ="truth",
+                    units = NULL,
+                    targets = NULL,
+                    timezeros = origin_date,
+                    types = "quantile")
+
+  # Format truth
+  truth_data <- raw_truth |>
+    dplyr::rename(location = unit, forecast_date = timezero) |>
+    dplyr::mutate(model="flu-truth", target_variable="inc flu hosp", 
+                  target_end_date=ceiling_date(forecast_date, "weeks")-days(1)) |>
+    dplyr::select(model, target_variable, target_end_date, location, value)
+  
+  return (truth_data)
+}
+
+
 #' Pulls forecasts for incident flu hospitalizations from zoltar and
 #' turns the data-frame into a `model_out_tbl` object as defined by the
 #' hubverse to be fed into ensembling functions from `hubEnsembles`
