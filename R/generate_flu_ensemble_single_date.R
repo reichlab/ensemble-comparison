@@ -1,8 +1,56 @@
+#' Pulls forecasts for incident flu hospitalizations from zoltar and
+#' turns the data-frame into a `model_out_tbl` object as defined by the
+#' hubverse to be fed into ensembling functions from `hubEnsembles`
+#'
+#' @param zoltar_connection a connection through which to access zoltar
+#' @param project_url `character` string of the URL for these zoltar project 
+#'   from which to query the component forecasts
+#' @param origin_date `character` string that specifies the date on which
+#'   the component forecasts were made that should be used for the ensemble
+#'
+#' @return a `data.frame` of forecast data for flu hospitalizations with columns:
+#'   model_id, forecast_date, location, horizon, temporal_resolution, 
+#'   target_variable, target_end_date, output_type, output_type_id, value
+#' @export
+#'
+#' @examples
+get_flu_forecasts_single_date <- function(zoltar_connection, project_url, origin_date) {
+  raw_forecasts <- zoltar_connection |>
+    do_zoltar_query(project_url, query_type ="forecasts",
+                    models = NULL,
+                    units = NULL,
+                    targets = NULL,
+                    timezeros = origin_date,
+                    types = "quantile")
+  
+  task_id_cols <- c("forecast_date", "location", "horizon", "target_variable")
+
+  # Format forecasts
+  forecast_data <- raw_forecasts |>
+    tidyr::separate(target, sep=" ", convert=TRUE, into=c("horizon", "temporal_resolution", "ahead", "target_variable"), extra="merge") |>
+    dplyr::rename(location = unit, forecast_date = timezero) |>
+    dplyr::mutate(target_end_date=ceiling_date(forecast_date, "weeks")-days(1), .before = value) |>
+    as_model_out_tbl(model_id_col = "model",
+                    output_type_col = "class",
+                    output_type_id_col = "quantile",
+                    value_col = "value",
+                    sep = "-",
+                    trim_to_task_ids = FALSE,
+                    hub_con = NULL,
+                    task_id_cols = task_id_cols,
+                    remove_empty = TRUE) |>
+    dplyr::select(-ahead, -season)
+      
+  return (forecast_data)
+}
+
+
 #' Compute ensemble model outputs as a quantile average, quantile median,
 #' linear pool with normal tails, or linear pool with log normal tails
 #' for each combination model task, output type, and output type id.
 #' Component model forecasts for incident flu hospitalizations are queried 
-#' from zoltar
+#' from zoltar with ensemble outputs formatted to be fed into 
+#' `covidHubUtils::score_forecasts()` for scoring
 #'
 #' @param zoltar_connection a connection through which to access zoltar
 #' @param project_url `character` string of the URL for these zoltar project 
@@ -27,43 +75,23 @@
 generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                                               origin_date, include_baseline=FALSE,
                                               ensemble_type, dist_type=NULL, ...) {
-  raw_forecasts <- zoltar_connection |>
-    do_zoltar_query(project_url, query_type ="forecasts",
-                    models = NULL,
-                    units = NULL,
-                    targets = NULL,
-                    timezeros = origin_date,
-                    types = "quantile")
 
+  model_outputs <- zoltar_connection |> 
+    get_flu_forecasts_single_date(project_url, origin_dates) |>
+    dplyr::filter(model_id != "Flusight-ensemble")
+    
   if (!include_baseline) {
-    raw_forecasts <- raw_forecasts |>
-      dplyr::filter(model != "Flusight-baseline")
+    model_outputs <- model_outputs |>
+      dplyr::filter(model_id != "Flusight-baseline")
   }
 
   task_id_cols <- c("forecast_date", "location", "horizon", "target_variable")
-
-  # Format forecasts
-  forecast_data <- raw_forecasts |>
-    dplyr::filter(model != "Flusight-ensemble") |>
-    tidyr::separate(target, sep=" ", convert=TRUE, into=c("horizon", "temporal_resolution", "ahead", "target_variable"), extra="merge") |>
-    dplyr::rename(location = unit, forecast_date = timezero) |>
-    dplyr::mutate(target_end_date=ceiling_date(forecast_date, "weeks")-days(1)) |>
-    as_model_out_tbl(model_id_col = "model",
-                    output_type_col = "class",
-                    output_type_id_col = "quantile",
-                    value_col = "value",
-                    sep = "-",
-                    trim_to_task_ids = FALSE,
-                    hub_con = NULL,
-                    task_id_cols = task_id_cols,
-                    remove_empty = TRUE) |>
-    dplyr::select(-season, -ahead)
 
   # Ensemble forecasts
   if (ensemble_type == "linear_pool") {
     if (is.null(dist_type)) dist_type = "norm"
     lp_type <- ifelse(dist_type == "lnorm", "lognormal", "normal")
-    ensemble_outputs <- forecast_data |>
+    ensemble_outputs <- model_outputs |>
       linear_pool(weights=NULL, weights_col_name=NULL,
                   model_id=paste("lp", lp_type, sep="-"),
                   task_id_cols = task_id_cols,
@@ -72,7 +100,7 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                   n_samples = 1e5)
 
   } else {
-    ensemble_outputs <- forecast_data |>
+    ensemble_outputs <- model_outputs |>
       simple_ensemble(weights=NULL, weights_col_name=NULL,
                       agg_fun = ensemble_type,
                       model_id=paste(ensemble_type, "ensemble", sep="-"),
@@ -81,7 +109,9 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
   
   ensemble_outputs <- ensemble_outputs |> 
     dplyr::rename(model = model_id, type = output_type, quantile = output_type_id) |>
-    dplyr::mutate(ensemble_outputs, value = ifelse(value < 0, 0, value))
+    dplyr::mutate(ensemble_outputs, value = ifelse(value < 0, 0, value)) |>
+    dplyr::select(model, forecast_date, location, horizon, temporal_resolution, 
+                  target_variable, target_end_date, type, quantile, value)
   
   return (ensemble_outputs)
 }
