@@ -8,6 +8,7 @@ library(stringr)
 library(hubUtils)
 library(hubEnsembles)
 
+# setwd("ensemble-comparison")
 source("R/flu_truth_forecasts_functions.R")
 
 # parallelize code
@@ -32,18 +33,17 @@ the_models <- models(zoltar_connection, project_url)
 # str(the_models)
 
 origin_dates <-  "2023-05-15"
-task_id_cols <- c("timezero", "unit", "horizon", "target")
+task_id_cols <- c("forecast_date", "location", "horizon", "target")
 
 # Get/format forecasts
 forecast_data <- get_flu_forecasts_single_date(zoltar_connection, project_url, origin_dates) |>
   dplyr::filter(model_id != "Flusight-ensemble") |>
-  dplyr::rename(model = model_id, type = output_type, quantile = output_type_id) |>
-  dplyr::select(all_of(names(forecast_data)))
+  dplyr::rename(model = model_id, type = output_type, quantile = output_type_id) 
 
-flu_locations <- forecast_data$unit |>
+flu_locations <- forecast_data$location |>
   unique() |> sort()
 
-flu_quantiles <- forecast_data$output_type_id |>
+flu_quantiles <- forecast_data$quantile |>
   unique() |> sort()
 
 # Function testing
@@ -130,11 +130,27 @@ flu_linear_pool_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vec
                                     ensemble_type="linear_pool", dist_type=NULL) 
 })
                                     
-flu_linear_pool_22_23 <- purrr::map_dfr(flu_dates_22_23, .f = function(dates_vector) {
-  generate_flu_ensemble_single_date(zoltar_connection, project_url,
-                                    dates_vector, include_baseline=FALSE,
-                                    ensemble_type="linear_pool", dist_type=NULL) 
-})
+lp_data1 <- purrr::map_dfr(flu_dates_22_23, .f = function(dates_vector) {
+  get_flu_forecasts_single_date(zoltar_connection, project_url, dates_vector) 
+}); Sys.time()
+
+flu_linear_pool_22_23 <- rbind(lp_ensemble1, lp_ensemble2)
+
+lp_ensemble1 <-  lp_data1 |>
+  filter(forecast_date < "2023-02-01") |>
+  dplyr::group_split(forecast_date) |>
+  purrr::map_dfr(.f = function(split_forecasts) {
+    generate_flu_ensemble(split_forecasts, include_baseline=FALSE, 
+                          ensemble_type="linear_pool", dist_type=NULL)
+  }) 
+  
+lp_ensemble2 <-  lp_data1 |>
+  filter(forecast_date > "2023-02-01") |>
+  dplyr::group_split(forecast_date) |>
+  purrr::map_dfr(.f = function(split_forecasts) {
+    generate_flu_ensemble(split_forecasts, include_baseline=FALSE, 
+                          ensemble_type="linear_pool", dist_type=NULL)
+  }) 
 
 readr::write_rds(flu_linear_pool_21_22, "data/flu_linear_pool-ensemble_21-22.rds", "xz", compression = 9L)
 readr::write_rds(flu_linear_pool_22_23, "data/flu_linear_pool-ensemble_22-23.rds", "xz", compression = 9L)
