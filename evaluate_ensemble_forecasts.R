@@ -98,3 +98,73 @@ flu_scores_ensembles <- flu_forecasts_ensembles |>
 readr::write_rds(flu_scores_ensembles, "data/flu_scores_ensembles.rds", "xz", compression = 9L)
 flu_scores_ensembles <- readr::read_rds("data/flu_scores_ensembles.rds")
 flu_scores_all <- rbind(flu_scores_ensembles, flu_scores_baseline)
+
+
+library(patchwork)
+source("R/evaluation_functions.R")
+
+# Overall
+flu_overall_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=NULL, baseline_name="Flusight-baseline", us_only=TRUE)
+  
+flu_overall_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=NULL, baseline_name="Flusight-baseline", us_only=FALSE)
+
+# Season
+flu_season_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="season", baseline_name="Flusight-baseline", us_only=TRUE)
+
+flu_season_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="season", baseline_name="Flusight-baseline", us_only=FALSE)
+
+# Horizon
+flu_horizon_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="horizon", baseline_name="Flusight-baseline", us_only=TRUE)
+
+flu_horizon_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="horizon", baseline_name="Flusight-baseline", us_only=FALSE)
+
+model_names <- c("Flusight-baseline", "mean-ensemble", "median-ensemble", "lp-normal")
+model_colors <- c("black", "red", "orange", "green", "blue")
+
+wis_plot_us <- plot_evaluated_scores(flu_horizon_us, model_names, model_colors, main="US")
+wis_plot_states <- plot_evaluated_scores(flu_horizon_states, model_names, model_colors, main="States")
+
+wis_plot_us + wis_plot_states +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+
+# Location
+flu_location <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="location", baseline_name="Flusight-baseline")
+
+# Season and Horizon
+flu_season_horizon_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=c("horizon", "season"), baseline_name="Flusight-baseline", us_only=TRUE)
+
+flu_season_horizon_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=c("horizon", "season"), baseline_name="Flusight-baseline", us_only=FALSE)
+
+wis_plot_us_2122 <- flu_season_horizon_us |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores(model_names, model_colors, main="US 2021-22")
+wis_plot_us_2223 <- flu_season_horizon_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores(model_names, model_colors, main="US 2022-23")
+wis_plot_states_2122 <- flu_season_horizon_states |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores(model_names, model_colors, main="States 2021-22")
+wis_plot_states_2223 <- flu_season_horizon_states |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores(model_names, model_colors, main="States 2022-23")
+
+wis_plot_us_2122 + wis_plot_us_2223 + wis_plot_states_2122+wis_plot_states_2223 +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+  
+# forecast_date and Horizon
+flu_forecast_date_horizon_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date"), baseline_name="Flusight-baseline", us_only=TRUE)
+
+flu_forecast_date_horizon_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date"), baseline_name="Flusight-baseline", us_only=FALSE)
