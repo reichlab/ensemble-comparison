@@ -1,0 +1,244 @@
+---
+title: "Ensemble Comparison Project"
+author: "Li Shandross"
+date: "`r Sys.Date()`" 
+output: pdf_document
+indent: true
+fontsize: 12pt
+header-includes:
+    - \usepackage{setspace}
+    - \usepackage{indentfirst}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(zoltr)
+library(covidHubUtils)
+library(hubUtils)
+library(hubEnsembles)
+library(lubridate)
+library(readr)
+library(stringr)
+library(tidyr)
+library(patchwork)
+library(knitr)
+
+source("R/evaluation_functions.R")
+```
+
+# Introduction/Background
+## Overview:
+*Goal:* given quantile forecasts as an input, compare:
+- linear pools
+- direct computation of quantile average or median
+
+### Related papers:
+- By Emily: https://royalsocietypublishing.org/doi/10.1098/rsif.2022.0659
+- Busetti: https://onlinelibrary.wiley.com/doi/full/10.1111/obes.12163?casa_token=J9KIeOZWEUAAAAAA%3A8Xm3PyoD9TqAczQf1P6C9QOEfHA-KePb06cLGtlEdM-MhFpbrXIHmD1bdP9tO0gcGiwh4mjPlcXtNVA
+
+### Our setting:
+- Primary interest is flu hospital admissions: will FluSight use the linear pool method this fall?
+- But we only have 2 seasons of quantile forecasts for flu, and in the first season the data was iffy (full reporting only started halfway through the season). Therefore, if possible let’s also include COVID hospital admissions
+
+
+# Methods
+### Start with flu:
+- Both seasons
+- All locations forecasted in the flusight exercise. Anticipating that there might be a difference, let’s formally collect somewhere the locations used in flu so that we can easily use the same ones for covid if/when we add it in later.
+- Include all forecast horizons, we can stratify results by horizon afterward
+- All component models, no checks like whether the model provides all locations or all horizons. But the model should provide all quantile levels for any location/horizons where it provides any forecasts.
+
+### Ensemble methods, all equally weighted:
+- Linear pool, using `hubEnsembles::linear_pool`
+  - *Note:* we’re calling distfromq to get from quantiles to full distributions. It makes some tail assumptions. The default is normal distributions for the tails. This is awkward because hospitalizations have to be non-negative, but a normal lower tail could extend into negative values. To address this, with this method let’s truncate any negative quantile estimates to 0.
+  - ELR is working on adding in a lognormal tail assumption to distfromq. When it is ready, we can add it into the comparison (so there would be 2 LP methods, LP-normal and LP-lognormal)
+- Mean of quantiles (Vincent-mean), using `hubEnsembles::simple_ensemble`
+- Median of quantiles (Vincent-median), using `hubEnsembles::simple_ensemble`
+
+## Data 
+Flu incident hospitalization truth and forecasts are queried from zoltar for the 2021-2022 and 2022-23 seasons. This is the only target/time period evaluated currently.
+
+## Forecast locations 
+Forecasts are made for all 50 states, Washington DC, Puerto Rico, the Virgin Islands come and the US as a whole.
+1 - 4 week ahead incident flu hospitalizations
+Only validation phase, no testing phase (assume that will be the upcoming season).
+
+
+##  Model specifications
+
+
+## Metrics and evaluation  
+- different ways to stratify evaluations: overall, by season, by horizon, by location, by (forecast) date
+- separate by geographic scale (averaged states/territories vs US national) to avoid the US national results obscuring that of the state/territories
+- Incident flu hospitalizations evaluated by usual horizon week, incident covid hospitalizations will also be evaluated on a weekly basis
+- metrics: average wis, average mae, average 50% pi coverage, average 95% pi coverage, average rwis, average rmae
+
+
+# Results
+
+```{r read in data}
+flu_dates_21_22 <- as.Date("2022-01-24") + weeks(0:21)
+flu_dates_22_23 <- as.Date("2022-10-17") + weeks(0:30)
+all_flu_dates <- c(flu_dates_21_22, flu_dates_22_23)
+hub_locations_flusight <- tibble(hub_locations_flusight)
+
+# Read in data
+flu_truth_all <- readr::read_rds("data/flu_truth_all.rds")
+flu_files <- list.files(path="data", pattern="ensemble_", full.names=TRUE)
+flu_forecasts_ensembles <- purrr::map_dfr(flu_files, .f=read_rds) |>
+    dplyr::select(model, forecast_date, location, horizon, temporal_resolution, 
+                  target_variable, target_end_date, type, quantile, value)
+
+flu_scores_baseline <- readr::read_rds("data/flu_baseline_scores.rds")
+flu_scores_ensembles <- readr::read_rds("data/flu_scores_ensembles.rds")
+flu_scores_all <- rbind(flu_scores_ensembles, flu_scores_baseline)
+
+model_names <- c("Flusight-baseline", "mean-ensemble", "median-ensemble", "lp-normal")
+model_colors <- c("black", "#F8766D", "#00BA38", "#619CFF")
+```
+
+## Plot Forecasts
+Will plot forecasts for all models, select locations (including US, highest count state, lowest count state/territory)
+
+## Overall model performance
+
+```{r overall evaluation, message=FALSE, warning=FALSE}
+flu_overall_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=NULL, baseline_name="Flusight-baseline", us_only=TRUE)
+  
+flu_overall_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=NULL, baseline_name="Flusight-baseline", us_only=FALSE)
+
+knitr::kable(flu_overall_us, caption="Summary of overall model performance across both seasons, averaged over the US national geographic scale.")
+knitr::kable(flu_overall_states, caption="Summary of overall model performance across both seasons, averaged over the states geographic scale.")
+```
+
+## By season model performance
+
+```{r by season evaluation, message=FALSE, warning=FALSE}
+flu_season_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="season", baseline_name="Flusight-baseline", us_only=TRUE)
+
+flu_season_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="season", baseline_name="Flusight-baseline", us_only=FALSE)
+
+knitr::kable(flu_season_us, caption="Summary of by season model performance, averaged over the US national geographic scale.")
+knitr::kable(flu_season_states, caption="Summary of by season model performance, averaged over the states geographic scale.")
+```
+
+
+## Model performance by horizon week
+
+```{r by horizon evaluation, message=FALSE, warning=FALSE, fig.cap='Average WIS by the horizon week for each model for the US national level and the states level.'}
+flu_horizon_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="horizon", baseline_name="Flusight-baseline", us_only=TRUE)
+
+flu_horizon_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="horizon", baseline_name="Flusight-baseline", us_only=FALSE)
+
+# knitr::kable(flu_horizon_us, caption="Summary of by horizon model performance across both seasons, averaged over the US national geographic scale.")
+# knitr::kable(flu_horizon_states, caption="Summary of by horizon model performance across both seasons, averaged over the states geographic scale.")
+
+wis_plot_us <- plot_evaluated_scores(flu_horizon_us, model_names, model_colors, main="US")
+wis_plot_states <- plot_evaluated_scores(flu_horizon_states, model_names, model_colors, main="States")
+
+wis_plot_us + wis_plot_states +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+```
+
+### Additional by season split
+```{r, message=FALSE, warning=FALSE}
+flu_season_horizon_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=c("horizon", "season"), baseline_name="Flusight-baseline", us_only=TRUE)
+
+flu_season_horizon_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=c("horizon", "season"), baseline_name="Flusight-baseline", us_only=FALSE)
+
+wis_plot_us_2122 <- flu_season_horizon_us |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores(model_names, model_colors, main="US 2021-22")
+wis_plot_us_2223 <- flu_season_horizon_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores(model_names, model_colors, main="US 2022-23")
+wis_plot_states_2122 <- flu_season_horizon_states |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores(model_names, model_colors, main="States 2021-22")
+wis_plot_states_2223 <- flu_season_horizon_states |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores(model_names, model_colors, main="States 2022-23")
+
+wis_plot_us_2122 + wis_plot_us_2223 + wis_plot_states_2122+wis_plot_states_2223 +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+```
+
+
+## Model Performance by Week
+
+```{r By date US 2021-22, message=FALSE, warning=FALSE, fig.cap='Average h-week ahead WIS and 95% PI coverage for each model for the US national level.'}  
+flu_date_horizon_season_us <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date", "season"), baseline_name="Flusight-baseline", us_only=TRUE)
+
+wis_date_plot_us1_2122 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=1, main="us, 1 week ahead")
+wis_date_plot_us4_2122 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=4, main="US, 4 week ahead")
+cov95_date_plot_us1_2122 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=1, y_var="cov95", main="US, 1 week ahead")
+cov95_date_plot_us4_2122 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=4, y_var="cov95", main="US, 4 week ahead")
+  
+wis_date_plot_us1_2122 + wis_date_plot_us4_2122 + 
+  cov95_date_plot_us1_2122 + cov95_date_plot_us4_2122 +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+```
+
+```{r By date US 2022-23, message=FALSE, warning=FALSE, fig.cap='Average h-week ahead WIS and 95% PI coverage for each model for the US national level.'}  
+wis_date_plot_us1_2223 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=1, main="us, 1 week ahead")
+wis_date_plot_us4_2223 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=4, main="US, 4 week ahead")
+cov95_date_plot_us1_2223 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=1, y_var="cov95", main="US, 1 week ahead")
+cov95_date_plot_us4_2223 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=4, y_var="cov95", main="US, 4 week ahead")
+  
+wis_date_plot_us1_2223 + wis_date_plot_us4_2223 + 
+  cov95_date_plot_us1_2223 + cov95_date_plot_us4_2223 +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+```
+
+
+## Model performance by location
+```{r by location, message=FALSE, warning=FALSE, fig.cap=''}  
+flu_location <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables="location", baseline_name="Flusight-baseline")
+
+model_levels <- pull(flu_overall_states, model)
+plot_wis_loc(flu_scores_all, flu_truth_all, model_levels, baseline_name = "Flusight-baseline")
+```
+
+
+# Conclusions/Discussion
+
+
+
+
+# References
+\setlength{\parindent}{-0.4in}
+\setlength{\leftskip}{0.4in}
+\setlength{\parskip}{8pt}
+\noindent
+
