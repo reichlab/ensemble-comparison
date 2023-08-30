@@ -125,7 +125,7 @@ flu_horizon_states <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables="horizon", baseline_name="Flusight-baseline", us_only=FALSE)
 
 model_names <- c("Flusight-baseline", "mean-ensemble", "median-ensemble", "lp-normal")
-model_colors <- c("black", "red", "orange", "green", "blue")
+model_colors <- c("black", "red", "yellow", "green")
 
 wis_plot_us <- plot_evaluated_scores(flu_horizon_us, model_names, model_colors, main="US")
 wis_plot_states <- plot_evaluated_scores(flu_horizon_states, model_names, model_colors, main="States")
@@ -137,6 +137,9 @@ wis_plot_us + wis_plot_states +
 # Location
 flu_location <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables="location", baseline_name="Flusight-baseline")
+
+model_levels <- pull(flu_overall_states, model)
+plot_wis_loc(flu_scores_wide, flu_truth_all, model_levels, baseline_name = "Flusight-baseline")
 
 # Season and Horizon
 flu_season_horizon_us <- flu_scores_all |>
@@ -168,3 +171,12 @@ flu_forecast_date_horizon_us <- flu_scores_all |>
 
 flu_forecast_date_horizon_states <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date"), baseline_name="Flusight-baseline", us_only=FALSE)
+  
+wis_date_plot_us1 <- plot_evaluated_scores_forecast_date(flu_forecast_date_horizon_us, model_names, model_colors, horizon=1, main="US, 1 week ahead")
+wis_date_plot_us4 <- plot_evaluated_scores_forecast_date(flu_forecast_date_horizon_us, model_names, model_colors, horizon=4, main="US, 4 week ahead")
+wis_date_plot_states1 <- plot_evaluated_scores_forecast_date(flu_forecast_date_horizon_states, model_names, model_colors, horizon=1, main="States, 1 week ahead")
+wis_date_plot_states4 <- plot_evaluated_scores_forecast_date(flu_forecast_date_horizon_states, model_names, model_colors, horizon=4, main="States, 4 week ahead")
+
+wis_date_plot_us1 + wis_date_plot_us4 + wis_date_plot_states1 + wis_date_plot_states4 +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
