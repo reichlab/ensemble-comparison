@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: 
   pdf_document: 
     fig_width: 8
-    fig_height: 12
+    fig_height: 11
 indent: true
 fontsize: 12pt
 header-includes:
@@ -198,10 +198,10 @@ wis_date_plot_us4_2122 <- flu_date_horizon_season_us |>
   
 wis_date_plot_us1_2223 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2022-2023") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="US, 1 week ahead")
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="US 2022-23, 1 week ahead")
 wis_date_plot_us4_2223 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2022-2023") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="US, 4 week ahead")
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="US 2022-23, 4 week ahead")
   
 wis_date_plot_us1_2122 + wis_date_plot_us1_2223 + 
   wis_date_plot_us4_2122 + wis_date_plot_us4_2223 + 
@@ -236,7 +236,7 @@ wis_date_plot_states1_2122 + wis_date_plot_states1_2223 +
 
 
 ## Model performance by location
-```{r by location, message=FALSE, warning=FALSE, fig.cap=''}  
+```{r by location, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model across all horizons for both seasons'}  
 flu_location <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables="location", baseline_name="Flusight-baseline")
 
@@ -245,74 +245,72 @@ plot_wis_loc(flu_scores_all, flu_truth_all, model_levels, baseline_name = "Flusi
 ```
 
 
-```{r by location and season, message=FALSE, warning=FALSE, fig.cap=''}  
+```{r by location and season 21 22, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model across all horizons during the 2021-2022 season'}  
 wis_loc_plot_2122 <- flu_scores_all |>
   dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
   dplyr::filter(season == "2021-2022") |>
   plot_wis_loc(flu_truth_21_22, model_levels, baseline_name = "Flusight-baseline")
+```
   
+```{r by location and season 22 23, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model across all horizons during the 2022-2023 season'}  
 wis_loc_plot_2223 <- flu_scores_all |>
   dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
   dplyr::filter(season == "2022-2023") |>
   plot_wis_loc(flu_truth_22_23, model_levels, baseline_name = "Flusight-baseline")
-
-wis_loc_plot_2122 + wis_loc_plot_2223 +
-  plot_layout(ncol = 2, guides='collect') &
-  theme(legend.position='bottom')
 ```
 
 
-```{r by location and horizon, message=FALSE, warning=FALSE, fig.cap=''}  
+```{r by location and horizon 1, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model across both seasons for a 1 week ahead horizon'}  
 model_levels_horizon1 <- filter(flu_horizon_states, horizon == 1)$model
-model_levels_horizon4 <- filter(flu_horizon_states, horizon == 4)$model
 
 wis_loc_plot1 <- flu_scores_all |>
   dplyr::filter(horizon == 1) |>
   plot_wis_loc(flu_truth_all, model_levels_horizon1, baseline_name = "Flusight-baseline")
-  
+```
+
+```{r by location and horizon 4, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model across both seasons for a 4 week ahead horizon'}  
+model_levels_horizon4 <- filter(flu_horizon_states, horizon == 4)$model
+
 wis_loc_plot4 <- flu_scores_all |>
   dplyr::filter(horizon == 4) |>
   plot_wis_loc(flu_truth_all, model_levels_horizon4, baseline_name = "Flusight-baseline")
-  
-wis_loc_plot1 + wis_loc_plot4 +
-  plot_layout(ncol = 2, guides='collect') &
-  theme(legend.position='bottom')
 ```
 
 
-```{r by location, horizon, and season, message=FALSE, warning=FALSE, fig.cap=''}  
+```{r by location horizon 1 and season 21 22, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model for a 1 week ahead horizon during the 2021-2022 season'}  
 model_levels_horizon1_2122 <- filter(flu_season_horizon_states, season=="2021-2022", horizon == 1)$model
-model_levels_horizon4_2122 <- filter(flu_season_horizon_states, season=="2021-2022", horizon == 4)$model
-model_levels_horizon1_2223 <- filter(flu_season_horizon_states, season=="2022-2023", horizon == 1)$model
-model_levels_horizon4_2223 <- filter(flu_season_horizon_states, season=="2022-2023", horizon == 4)$model
 
 wis_loc_plot1_2122 <- flu_scores_all |>
   dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
   dplyr::filter(horizon==1, season == "2021-2022") |>
   plot_wis_loc(flu_truth_21_22, model_levels_horizon1_2122, baseline_name = "Flusight-baseline")
-  
+```
+
+```{r by location horizon 4 and season 21 22, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model for a 4 week ahead horizon during the 2021-2022 season'}  
+model_levels_horizon4_2122 <- filter(flu_season_horizon_states, season=="2021-2022", horizon == 4)$model
+
 wis_loc_plot4_2122 <- flu_scores_all |>
   dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
   dplyr::filter(horizon==4, season == "2021-2022") |>
-  plot_wis_loc(flu_truth_21_22, model_levels_horizon4_2122, baseline_name = "Flusight-baseline")
+  plot_wis_loc(flu_truth_21_22, model_levels_horizon1_2122, baseline_name = "Flusight-baseline")
+```
+
+```{r by location horizon 1 and season 22 23, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model for a one week ahead horizon during the 2022-2023 season'}  
+model_levels_horizon1_2223 <- filter(flu_season_horizon_states, season=="2022-2023", horizon == 1)$model
 
 wis_loc_plot1_2223 <- flu_scores_all |>
   dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
   dplyr::filter(horizon==1, season == "2022-2023") |>
   plot_wis_loc(flu_truth_22_23, model_levels_horizon1_2223, baseline_name = "Flusight-baseline")
+```
   
+```{r by location horizon 4 and season 22 23, message=FALSE, warning=FALSE, fig.cap='Relative WIS plotted by location for each model for a one week ahead horizon during the 2022-2023 season'}  
+model_levels_horizon4_2223 <- filter(flu_season_horizon_states, season=="2022-2023", horizon == 4)$model
+
 wis_loc_plot4_2223 <- flu_scores_all |>
   dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
   dplyr::filter(horizon==4, season == "2022-2023") |>
   plot_wis_loc(flu_truth_22_23, model_levels_horizon4_2223, baseline_name = "Flusight-baseline")
-
-wis_loc_plot1_2122 + wis_loc_plot4_2122 + 
-  plot_layout(ncol = 2, guides='collect') &
-  theme(legend.position='bottom')
-  
-wis_loc_plot1_2223 + wis_loc_plot4_2223 +
-  plot_layout(ncol = 2, guides='collect') &
-  theme(legend.position='bottom')
 ```
 
 
