@@ -55,6 +55,7 @@ evaluate_flu_scores <- function(scores, grouping_variables, baseline_name, us_on
                                     base_mae == 0 & mae != 0 ~ Inf)) |>
     dplyr::select(-base_wis, -base_mae) |>
     dplyr::group_by(dplyr::across(dplyr::all_of(grouping_variables))) |>
+    mutate(across(where(is.numeric), round, digits=3)) |>
     dplyr::arrange(wis, .by_group=TRUE)
 
 }
@@ -75,10 +76,10 @@ plot_evaluated_scores <- function(summarized_scores, model_names, model_colors, 
 
   if (y_var == "wis") {
     gg <- ggplot(summarized_scores, mapping=aes(x=horizon, y=wis, group=model)) +
-      coord_cartesian(ylim = c(0, median(filter(summarized_scores, horizon==4)$wis)*1.5))
+      coord_cartesian(ylim = c(min(summarized_scores$wis)*0.9, median(filter(summarized_scores, horizon==4)$wis)*1.5))
   } else if (y_var == "mae") {
     gg <- ggplot(summarized_scores, mapping=aes(x=horizon, y=mae, group=model)) +
-      coord_cartesian(ylim = c(0, median(filter(summarized_scores, horizon==4)$mae)*1.5))
+      coord_cartesian(ylim = c(min(summarized_scores$mae)*0.9, median(filter(summarized_scores, horizon==4)$mae)*1.5))
   } else if (y_var == "cov95") {
     gg <- ggplot(summarized_scores, mapping=aes(x=horizon, y=cov95, group=model)) +
       geom_hline(aes(yintercept=0.95))
@@ -91,12 +92,12 @@ plot_evaluated_scores <- function(summarized_scores, model_names, model_colors, 
     geom_point(mapping=aes(col=model), alpha = 0.8) +
     geom_line(mapping=aes(col=model), alpha = 0.8) +
     scale_color_manual(breaks = model_names, values = model_colors) +
-     labs(title=main, x="horizon", y=paste("average", y_var)) +
+    labs(title=main, x="horizon", y=paste("average", y_var)) +
     theme_bw()
 }
 
 
-#' Plot summarized metrics against horizon week
+#' Plot summarized metrics against forecast_date
 #'
 #' @param summarized_scores A data frame of summarized scores. Must contain one row per model and horizon week combination plus a `horizon` column
 #' @param model_names An ordered vector of model names
@@ -109,10 +110,10 @@ plot_evaluated_scores <- function(summarized_scores, model_names, model_colors, 
 #' @export
 #'
 #' @examples
-plot_evaluated_scores_forecast_date <- function(summarized_scores, model_names, model_colors, y_var="wis", horizon, main) {
+plot_evaluated_scores_forecast_date <- function(summarized_scores, model_names, model_colors, y_var="wis", h=1, main) {
 
   data_to_plot <- summarized_scores |>
-    dplyr::filter(horizon == horizon)
+    dplyr::filter(horizon == h)
     
   if (y_var == "wis") {
     gg <- ggplot(data_to_plot, mapping=aes(x=forecast_date, y=wis, group=model)) +
@@ -131,7 +132,7 @@ plot_evaluated_scores_forecast_date <- function(summarized_scores, model_names, 
   gg +
     geom_point(mapping=aes(col=model), alpha = 0.8) +
     geom_line(mapping=aes(col=model), alpha = 0.8) +
-#    scale_x_date(name=NULL, date_breaks = "3 months", date_labels = "%b '%y") +
+    scale_x_date(name=NULL, date_labels = "%b '%y") +
     scale_color_manual(breaks = model_names, values = model_colors) +
     labs(title=main, x="forecast date", y=paste("average", y_var)) +
     theme_bw()
@@ -300,5 +301,6 @@ plot_wis_loc <- function(scores, truth, model_levels, baseline_name) { # potenti
     theme_bw()
 
   print(fig_wis_loc)
+  # return(fig_wis_loc)
 }
 
