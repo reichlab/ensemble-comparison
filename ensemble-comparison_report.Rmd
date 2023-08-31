@@ -315,7 +315,9 @@ wis_loc_plot4_2223 <- flu_scores_all |>
 
 
 # Conclusions/Discussion
+Overall, the vincent median ensemble is the best of the ensembles. However, there are several instances where the linear pool with normal tails (and occasionally the vincent mean ensemble) beats the vincent median; namely, the 1-week ahead horizon for both geographic scales (though it's more pronounced for the averaged states level). A more granular breakdown reveals that this deviation from the overall trend occurs mostly during the 2022-2023 season, specifically during times of high change. These patterns in which the vincent mean ensemble generally performs best, except for the one week ahead horizon with combined seasons or just the 2022-2023 season when the linear pool with normal tails perform slightly better.
 
+If the CDC is mainly interested in communicating forecasts with short-term horizons (e.g. 1-2 week ahead), the linear pool with normal tails may be worth further investigation, especially during periods of rapid change. Next steps also of course include exploring a linear pool with lognormal tails.
 
 
 # References
