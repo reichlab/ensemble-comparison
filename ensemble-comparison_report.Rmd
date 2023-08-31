@@ -2,7 +2,10 @@
 title: "Ensemble Comparison Project"
 author: "Li Shandross"
 date: "`r Sys.Date()`" 
-output: pdf_document
+output: 
+  pdf_document: 
+    fig_width: 8
+    fig_height: 12
 indent: true
 fontsize: 12pt
 header-includes:
@@ -71,7 +74,7 @@ Only validation phase, no testing phase (assume that will be the upcoming season
 ## Metrics and evaluation  
 - different ways to stratify evaluations: overall, by season, by horizon, by location, by (forecast) date
 - separate by geographic scale (averaged states/territories vs US national) to avoid the US national results obscuring that of the state/territories
-- Incident flu hospitalizations evaluated by usual horizon week, incident covid hospitalizations will also be evaluated on a weekly basis
+- Incident flu hospitalizations evaluated by usual horizon, incident covid hospitalizations will also be evaluated on a weekly basis
 - metrics: average wis, average mae, average 50% pi coverage, average 95% pi coverage, average rwis, average rmae
 
 
@@ -89,6 +92,11 @@ flu_files <- list.files(path="data", pattern="ensemble_", full.names=TRUE)
 flu_forecasts_ensembles <- purrr::map_dfr(flu_files, .f=read_rds) |>
     dplyr::select(model, forecast_date, location, horizon, temporal_resolution, 
                   target_variable, target_end_date, type, quantile, value)
+
+flu_truth_21_22 <- flu_truth_all |>
+  dplyr::filter(target_end_date < "2022-08-01")
+flu_truth_22_23 <- flu_truth_all |>
+  dplyr::filter(target_end_date > "2022-08-01")
 
 flu_scores_baseline <- readr::read_rds("data/flu_baseline_scores.rds")
 flu_scores_ensembles <- readr::read_rds("data/flu_scores_ensembles.rds")
@@ -128,9 +136,9 @@ knitr::kable(flu_season_states, caption="Summary of by season model performance,
 ```
 
 
-## Model performance by horizon week
+## Model performance by horizon
 
-```{r by horizon evaluation, message=FALSE, warning=FALSE, fig.cap='Average WIS by the horizon week for each model for the US national level and the states level.'}
+```{r by horizon evaluation, message=FALSE, warning=FALSE, fig.cap='Average WIS by the horizon for each model for the US national level and the states level.'}
 flu_horizon_us <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables="horizon", baseline_name="Flusight-baseline", us_only=TRUE)
 
@@ -183,39 +191,45 @@ flu_date_horizon_season_us <- flu_scores_all |>
 
 wis_date_plot_us1_2122 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2021-2022") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=1, main="us, 1 week ahead")
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="US 2021-22, 1 week ahead")
 wis_date_plot_us4_2122 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2021-2022") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=4, main="US, 4 week ahead")
-cov95_date_plot_us1_2122 <- flu_date_horizon_season_us |>
-  dplyr::filter(season == "2021-2022") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=1, y_var="cov95", main="US, 1 week ahead")
-cov95_date_plot_us4_2122 <- flu_date_horizon_season_us |>
-  dplyr::filter(season == "2021-2022") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=4, y_var="cov95", main="US, 4 week ahead")
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="US 2021-22, 4 week ahead")
   
-wis_date_plot_us1_2122 + wis_date_plot_us4_2122 + 
-  cov95_date_plot_us1_2122 + cov95_date_plot_us4_2122 +
+wis_date_plot_us1_2223 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="US, 1 week ahead")
+wis_date_plot_us4_2223 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="US, 4 week ahead")
+  
+wis_date_plot_us1_2122 + wis_date_plot_us1_2223 + 
+  wis_date_plot_us4_2122 + wis_date_plot_us4_2223 + 
   plot_layout(ncol = 2, guides='collect') &
   theme(legend.position='bottom')
 ```
 
-```{r By date US 2022-23, message=FALSE, warning=FALSE, fig.cap='Average h-week ahead WIS and 95% PI coverage for each model for the US national level.'}  
-wis_date_plot_us1_2223 <- flu_date_horizon_season_us |>
-  dplyr::filter(season == "2022-2023") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=1, main="us, 1 week ahead")
-wis_date_plot_us4_2223 <- flu_date_horizon_season_us |>
-  dplyr::filter(season == "2022-2023") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=4, main="US, 4 week ahead")
-cov95_date_plot_us1_2223 <- flu_date_horizon_season_us |>
-  dplyr::filter(season == "2022-2023") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=1, y_var="cov95", main="US, 1 week ahead")
-cov95_date_plot_us4_2223 <- flu_date_horizon_season_us |>
-  dplyr::filter(season == "2022-2023") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, horizon=4, y_var="cov95", main="US, 4 week ahead")
+
+```{r By date States 2021-22, message=FALSE, warning=FALSE, fig.cap='Average h-week ahead WIS and 95% PI coverage for each model for the States national level.'}  
+flu_date_horizon_season_states <- flu_scores_all |>
+  evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date", "season"), baseline_name="Flusight-baseline", us_only=FALSE)
+
+wis_date_plot_states1_2122 <- flu_date_horizon_season_states |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="States, 1 week ahead")
+wis_date_plot_states4_2122 <- flu_date_horizon_season_states |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="States, 4 week ahead")
   
-wis_date_plot_us1_2223 + wis_date_plot_us4_2223 + 
-  cov95_date_plot_us1_2223 + cov95_date_plot_us4_2223 +
+wis_date_plot_states1_2223 <- flu_date_horizon_season_states |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="States, 1 week ahead")
+wis_date_plot_states4_2223 <- flu_date_horizon_season_states |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="States, 4 week ahead")
+  
+wis_date_plot_states1_2122 + wis_date_plot_states1_2223 + 
+  wis_date_plot_states4_2122 + wis_date_plot_states4_2223 + 
   plot_layout(ncol = 2, guides='collect') &
   theme(legend.position='bottom')
 ```
@@ -231,8 +245,78 @@ plot_wis_loc(flu_scores_all, flu_truth_all, model_levels, baseline_name = "Flusi
 ```
 
 
-# Conclusions/Discussion
+```{r by location and season, message=FALSE, warning=FALSE, fig.cap=''}  
+wis_loc_plot_2122 <- flu_scores_all |>
+  dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_wis_loc(flu_truth_21_22, model_levels, baseline_name = "Flusight-baseline")
+  
+wis_loc_plot_2223 <- flu_scores_all |>
+  dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_wis_loc(flu_truth_22_23, model_levels, baseline_name = "Flusight-baseline")
 
+wis_loc_plot_2122 + wis_loc_plot_2223 +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+```
+
+
+```{r by location and horizon, message=FALSE, warning=FALSE, fig.cap=''}  
+model_levels_horizon1 <- filter(flu_horizon_states, horizon == 1)$model
+model_levels_horizon4 <- filter(flu_horizon_states, horizon == 4)$model
+
+wis_loc_plot1 <- flu_scores_all |>
+  dplyr::filter(horizon == 1) |>
+  plot_wis_loc(flu_truth_all, model_levels_horizon1, baseline_name = "Flusight-baseline")
+  
+wis_loc_plot4 <- flu_scores_all |>
+  dplyr::filter(horizon == 4) |>
+  plot_wis_loc(flu_truth_all, model_levels_horizon4, baseline_name = "Flusight-baseline")
+  
+wis_loc_plot1 + wis_loc_plot4 +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+```
+
+
+```{r by location, horizon, and season, message=FALSE, warning=FALSE, fig.cap=''}  
+model_levels_horizon1_2122 <- filter(flu_season_horizon_states, season=="2021-2022", horizon == 1)$model
+model_levels_horizon4_2122 <- filter(flu_season_horizon_states, season=="2021-2022", horizon == 4)$model
+model_levels_horizon1_2223 <- filter(flu_season_horizon_states, season=="2022-2023", horizon == 1)$model
+model_levels_horizon4_2223 <- filter(flu_season_horizon_states, season=="2022-2023", horizon == 4)$model
+
+wis_loc_plot1_2122 <- flu_scores_all |>
+  dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
+  dplyr::filter(horizon==1, season == "2021-2022") |>
+  plot_wis_loc(flu_truth_21_22, model_levels_horizon1_2122, baseline_name = "Flusight-baseline")
+  
+wis_loc_plot4_2122 <- flu_scores_all |>
+  dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
+  dplyr::filter(horizon==4, season == "2021-2022") |>
+  plot_wis_loc(flu_truth_21_22, model_levels_horizon4_2122, baseline_name = "Flusight-baseline")
+
+wis_loc_plot1_2223 <- flu_scores_all |>
+  dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
+  dplyr::filter(horizon==1, season == "2022-2023") |>
+  plot_wis_loc(flu_truth_22_23, model_levels_horizon1_2223, baseline_name = "Flusight-baseline")
+  
+wis_loc_plot4_2223 <- flu_scores_all |>
+  dplyr::mutate(season = ifelse(forecast_date < as.Date("2022-08-01"), "2021-2022", "2022-2023")) |>
+  dplyr::filter(horizon==4, season == "2022-2023") |>
+  plot_wis_loc(flu_truth_22_23, model_levels_horizon4_2223, baseline_name = "Flusight-baseline")
+
+wis_loc_plot1_2122 + wis_loc_plot4_2122 + 
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+  
+wis_loc_plot1_2223 + wis_loc_plot4_2223 +
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+```
+
+
+# Conclusions/Discussion
 
 
 
