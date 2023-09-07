@@ -93,7 +93,7 @@ get_flu_forecasts_single_date <- function(zoltar_connection, project_url, origin
 #'   Flusight-baseline model in the ensemble.  Defaults to FALSE.
 #' @param ensemble_type `character` string that specifies the ensembling method
 #'   to be used on the flu forecasts. Can be "mean", "median", or "linear_pool".
-#' @param dist_type `character` string that specifies the type of distribution 
+#' @param tail_dist `character` string that specifies the type of distribution 
 #'   to use when calculating the tails for a linear pool ensemble. 
 #'   Defaults to NULL. This argument is ignored for Vincentization.  
 #' @param ... parameters that are passed to `distfromq::make_q_fun`, specifying
@@ -127,8 +127,7 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
       linear_pool(weights=NULL, weights_col_name=NULL,
                   model_id=paste("lp", lp_type, sep="-"),
                   task_id_cols = task_id_cols,
-                  lower_tail_dist=dist_type,
-                  upper_tail_dist=dist_type,
+                  tail_dist = tail_dist,
                   n_samples = 1e5)
 
   } else {
@@ -163,7 +162,7 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
 #'   Flusight-baseline model in the ensemble.  Defaults to FALSE.
 #' @param ensemble_type `character` string that specifies the ensembling method
 #'   to be used on the flu forecasts. Can be "mean", "median", or "linear_pool".
-#' @param dist_type `character` string that specifies the type of distribution 
+#' @param tail_dist `character` string that specifies the type of distribution 
 #'   to use when calculating the tails for a linear pool ensemble. 
 #'   Defaults to NULL. This argument is ignored for Vincentization.  
 #' @param ... parameters that are passed to `distfromq::make_q_fun`, specifying
@@ -174,7 +173,7 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
 #' @export
 #'
 #' @examples
-generate_flu_ensemble <- function(model_outputs, include_baseline=FALSE, ensemble_type, dist_type=NULL, ...) {
+generate_flu_ensemble <- function(model_outputs, include_baseline=FALSE, ensemble_type, tail_dist=NULL, ...) {
 
   model_outputs <- model_outputs |>
     dplyr::filter(model_id != "Flusight-ensemble")
@@ -188,14 +187,13 @@ generate_flu_ensemble <- function(model_outputs, include_baseline=FALSE, ensembl
 
   # Ensemble forecasts
   if (ensemble_type == "linear_pool") {
-    if (is.null(dist_type)) dist_type = "norm"
-    lp_type <- ifelse(dist_type == "lnorm", "lognormal", "normal")
+    if (is.null(tail_dist)) tail_dist = "norm"
+    lp_type <- ifelse(tail_dist == "lnorm", "lognormal", "normal")
     ensemble_outputs <- model_outputs |>
       linear_pool(weights=NULL, weights_col_name=NULL,
                   model_id=paste("lp", lp_type, sep="-"),
                   task_id_cols = task_id_cols,
-                  lower_tail_dist=dist_type,
-                  upper_tail_dist=dist_type,
+                  tail_dist = tail_dist,
                   n_samples = 1e5)
 
   } else {
@@ -235,7 +233,7 @@ generate_flu_ensemble <- function(model_outputs, include_baseline=FALSE, ensembl
 #'   Flusight-baseline model in the ensemble.  Defaults to FALSE.
 #' @param ensemble_type `character` string that specifies the ensembling method
 #'   to be used on the flu forecasts. Can be "mean", "median", or "linear_pool".
-#' @param dist_type `character` string that specifies the type of distribution 
+#' @param tail_dist `character` string that specifies the type of distribution 
 #'   to use when calculating the tails for a linear pool ensemble. 
 #'   Defaults to NULL. This argument is ignored for Vincentization.  
 #' @param ... parameters that are passed to `distfromq::make_q_fun`, specifying
@@ -248,7 +246,7 @@ generate_flu_ensemble <- function(model_outputs, include_baseline=FALSE, ensembl
 #' @examples
 wrapper_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                                               origin_date, include_baseline=FALSE,
-                                              ensemble_type, dist_type=NULL, ...) {
+                                              ensemble_type, tail_dist=NULL, ...) {
 
   model_outputs <- zoltar_connection |> 
     get_flu_forecasts_single_date(project_url, origin_date) #|>
@@ -262,7 +260,7 @@ wrapper_flu_ensemble_single_date <- function(zoltar_connection, project_url,
   ensemble_outputs <- model_outputs |> 
     generate_flu_ensemble(include_baseline=FALSE, 
                           ensemble_type=ensemble_type, 
-                          dist_type=NULL)
+                          tail_dist=NULL)
   
   return (ensemble_outputs)
 }
