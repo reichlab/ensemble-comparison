@@ -132,7 +132,7 @@ plot_evaluated_scores_forecast_date <- function(summarized_scores, model_names, 
   gg +
     geom_point(mapping=aes(col=model), alpha = 0.8) +
     geom_line(mapping=aes(col=model), alpha = 0.8) +
-    scale_x_date(name=NULL, date_labels = "%b '%y") +
+    scale_x_date(name=NULL, date_breaks = "2 months", date_labels = "%b '%y") +
     scale_color_manual(breaks = model_names, values = model_colors) +
     labs(title=main, x="forecast date", y=paste("average", y_var)) +
     theme_bw()

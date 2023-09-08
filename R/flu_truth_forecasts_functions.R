@@ -207,7 +207,7 @@ generate_flu_ensemble <- function(model_outputs, include_baseline=FALSE, ensembl
   ensemble_outputs <- ensemble_outputs |> 
     dplyr::rename(model = model_id, type = output_type, quantile = output_type_id) |>
     tidyr::separate(target_long, sep=" ", convert=TRUE, into=c("temporal_resolution", "ahead", "target_variable"), extra="merge") |>
-    dplyr::mutate(ensemble_outputs, value = ifelse(value < 0, 0, value)) |>
+    dplyr::mutate(value = ifelse(value < 0, 0, value)) |>
     dplyr::mutate(target_end_date=ceiling_date(forecast_date, "weeks")-days(1), .before = value) |>
     dplyr::select(model, forecast_date, location, horizon, temporal_resolution, 
                   target_variable, target_end_date, type, quantile, value)
