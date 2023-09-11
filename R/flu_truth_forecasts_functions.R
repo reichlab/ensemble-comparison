@@ -106,7 +106,7 @@ get_flu_forecasts_single_date <- function(zoltar_connection, project_url, origin
 #' @examples
 generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                                               origin_date, include_baseline=FALSE,
-                                              ensemble_type, dist_type=NULL, ...) {
+                                              ensemble_type, tail_dist=NULL, ...) {
 
   model_outputs <- zoltar_connection |> 
     get_flu_forecasts_single_date(project_url, origin_dates) |>
@@ -121,8 +121,8 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
 
   # Ensemble forecasts
   if (ensemble_type == "linear_pool") {
-    if (is.null(dist_type)) dist_type = "norm"
-    lp_type <- ifelse(dist_type == "lnorm", "lognormal", "normal")
+    if (is.null(tail_dist)) tail_dist = "norm"
+    lp_type <- ifelse(tail_dist == "lnorm", "lognormal", "normal")
     ensemble_outputs <- model_outputs |>
       linear_pool(weights=NULL, weights_col_name=NULL,
                   model_id=paste("lp", lp_type, sep="-"),
