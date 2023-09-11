@@ -2,11 +2,11 @@ library(tidyverse)
 library(lubridate)
 library(readr)
 library(stringr)
-library(helpEnsembles)
+library(hubEnsembles)
 
 # getwd()
-flusight_truth_path <- "../Flusight-forecast-data/data-truth/truth-Incident Hospitalizations.csv"
-current_truth <- readr::read_csv(flusight_truth_path)
+# flusight_truth_path <- "../Flusight-forecast-data/data-truth/truth-Incident Hospitalizations.csv"
+# current_truth <- readr::read_csv(flusight_truth_path)
 
 # reference_date <- lubridate::ceiling_date(Sys.Date(), "week") - days(1)
 reference_date <- "2023-05-08"
