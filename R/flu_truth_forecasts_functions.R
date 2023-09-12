@@ -109,7 +109,7 @@ generate_flu_ensemble_single_date <- function(zoltar_connection, project_url,
                                               ensemble_type, tail_dist=NULL, ...) {
 
   model_outputs <- zoltar_connection |> 
-    get_flu_forecasts_single_date(project_url, origin_dates) |>
+    get_flu_forecasts_single_date(project_url, origin_date) |>
     dplyr::filter(model_id != "Flusight-ensemble")
     
   if (!include_baseline) {
