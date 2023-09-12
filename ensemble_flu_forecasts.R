@@ -136,10 +136,33 @@ lp_ensemble2 <-  lp_raw |>
 
 flu_linear_pool_22_23 <- rbind(lp_ensemble1, lp_ensemble2)
 
-flu_linear_pool_21_22 <- flu_linear_pool_21_22 |>
-  dplyr::mutate(target_end_date=ceiling_date(forecast_date, "weeks")-days(1), .before = type) 
 
-readr::write_rds(flu_linear_pool_21_22, "data/flu_linear_pool-ensemble_21-22.rds", "xz", compression = 9L)
-readr::write_rds(flu_linear_pool_22_23, "data/flu_linear_pool-ensemble_22-23.rds", "xz", compression = 9L)
+flu_lp_lognorm_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vector) {
+  generate_flu_ensemble_single_date(zoltar_connection, project_url,
+                                    dates_vector, include_baseline=FALSE,
+                                    ensemble_type="linear_pool", tail_dist="lnorm") 
+})
+                    
+lp_lognorm1 <-  lp_raw |>
+  filter(forecast_date < "2023-02-01") |>
+  dplyr::group_split(forecast_date) |>
+  purrr::map_dfr(.f = function(split_forecasts) {
+    generate_flu_ensemble(split_forecasts, include_baseline=FALSE, 
+                          ensemble_type="linear_pool", dist_type="lnorm")
+  }) 
+  
+lp_lognorm2 <-  lp_raw |>
+  filter(forecast_date > "2023-02-01") |>
+  dplyr::group_split(forecast_date) |>
+  purrr::map_dfr(.f = function(split_forecasts) {
+    generate_flu_ensemble(split_forecasts, include_baseline=FALSE, 
+                          ensemble_type="linear_pool", dist_type="lnorm")
+  }) 
+
+flu_lp_lognorm_22_23 <- rbind(lp_lognorm1, lp_lognorm2)
+View(flu_lp_lognorm_21_22)
+readr::write_rds(flu_lp_lognorm_21_22, "data/flu_lp_lognorm-ensemble_21-22.rds", "xz", compression = 9L)
+chapter over the header 14 chapters 11 insert 14 must there's one receipt
+yreadr::write_rds(flu_lp_lognorm_22_23, "data/flu_lp_lognorm-ensemble_22-23.rds", "xz", compression = 9L)
 
 
