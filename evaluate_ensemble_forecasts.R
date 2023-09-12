@@ -8,6 +8,9 @@ library(stringr)
 library(hubUtils)
 library(hubEnsembles)
 
+library(patchwork)
+source("R/evaluation_functions.R")
+
 # Generate ensembles
 #flu_locations <- forecast_data$unit |> unique() |> sort()
 flu_dates_21_22 <- as.Date("2022-01-24") + weeks(0:21)
@@ -34,55 +37,8 @@ flu_forecasts_ensembles <- purrr::map_dfr(flu_files, .f=read_rds) |>
 flu_truth_21_22 <- flu_truth_all |>
   dplyr::filter(target_end_date < "2022-08-01")
 flu_truth_22_23 <- flu_truth_all |>
-  dplyr::filter(target_end_date > "2022-08-01")
-
-
-# Plot Forecasts
-# Plotting columns: model, forecast_date, location, horizon, temporal_resolution,
-#                   target_variable, target_end_date, type, quantile, value,
-#                   abbreviation, location_name, population, full_location_name
-library(covidHubUtils)
-hub_locations_flusight <- tibble(hub_locations_flusight)
-flu_forecasts_wide <- flu_forecasts_ensembles |>
-#  dplyr::mutate(temporal_resolution = "wk") |>
-  dplyr::left_join(hub_locations_flusight, by = c("location" = "fips")) |>
-  dplyr::mutate(full_location_name=location_name)
-View(flu_forecasts_wide)
-
-flu_test <- filter(flu_forecasts_wide, forecast_date < as.Date("2022-07-08"))
-
-flu_forecasts_wide_22 <- filter(flu_forecasts_wide, forecast_date < as.Date("2022-07-08"))
-flu_forecasts_wide_23 <- filter(flu_forecasts_wide, forecast_date > as.Date("2022-07-08"))
-
-# Plot Forecasts
-p <- covidHubUtils::plot_forecasts(
-            forecast_data=flu_forecasts_wide,
-            hub = "FluSight",
-            models = "02",
-            models = c("mean-ensemble", "median-ensemble", "lp-normal"),
-            truth_data = flu_truth_all,
-#            target_variable = "inc hosp",
-            intervals = c(0.5, 0.95),
-            truth_source = "HealthData",
-            use_median_as_point = TRUE,
-            facet = location ~.,
-            horizon = 4,
-#            facet_nrow = 3,
-           facet_scales = "free_y",
-            fill_by_model = TRUE,
-            plot=FALSE)
-      p+
-      scale_x_date(name=NULL, #limits = c(as.Date("2022-01-01"), as.Date("2022-07-08")), 
-#      scale_x_date(name=NULL, limits = c(as.Date("2023-02-01"), as.Date("2023-07-08")), 
-        date_breaks = "2 months", date_labels = "%b '%y") +
-#      coord_cartesian(ylim = c(700, 4000)) +
-#      coord_cartesian(ylim = c(600, 2500)) +
-#      coord_cartesian(ylim = c(0, max(flu_truth_all$value) * 1.5)) +
-      theme(axis.ticks.length.x = unit(0.5, "cm"),
-            axis.text.x = element_text(vjust = 7, hjust = -0.2),
-            legend.position = "none") 
-
-
+  dplyr::filter(target_end_date > "2022-08-01")  
+  
 
 # Score Forecasts
 # forecast columns: model, forecast_date, location, horizon, temporal_resolution,
@@ -99,10 +55,7 @@ readr::write_rds(flu_scores_ensembles, "data/flu_scores_ensembles.rds", "xz", co
 flu_scores_ensembles <- readr::read_rds("data/flu_scores_ensembles.rds")
 flu_scores_all <- rbind(flu_scores_ensembles, flu_scores_baseline)
 
-
-library(patchwork)
-source("R/evaluation_functions.R")
-
+# EVALUATION
 # Overall
 flu_overall_us <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables=NULL, baseline_name="Flusight-baseline", us_only=TRUE)
@@ -139,7 +92,7 @@ flu_location <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables="location", baseline_name="Flusight-baseline")
 
 model_levels <- pull(flu_overall_states, model)
-plot_wis_loc(flu_scores_wide, flu_truth_all, model_levels, baseline_name = "Flusight-baseline")
+plot_wis_loc(flu_scores_all, flu_truth_all, model_levels, baseline_name = "Flusight-baseline")
 
 # Season and Horizon
 flu_season_horizon_us <- flu_scores_all |>
@@ -165,17 +118,13 @@ wis_plot_us_2122 + wis_plot_us_2223 + wis_plot_states_2122+wis_plot_states_2223 
   plot_layout(ncol = 2, guides='collect') &
   theme(legend.position='bottom')
   
-# forecast_date and Horizon
+# forecast_date 
 flu_forecast_date_horizon_us <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date"), baseline_name="Flusight-baseline", us_only=TRUE)
 
 flu_forecast_date_horizon_states <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date"), baseline_name="Flusight-baseline", us_only=FALSE)
   
-wis_date_plot_us1 <- plot_evaluated_scores_forecast_date(flu_forecast_date_horizon_us, model_names, model_colors, horizon=1, main="US, 1 week ahead")
-wis_date_plot_us4 <- plot_evaluated_scores_forecast_date(flu_forecast_date_horizon_us, model_names, model_colors, horizon=4, main="US, 4 week ahead")
-wis_date_plot_states1 <- plot_evaluated_scores_forecast_date(flu_forecast_date_horizon_states, model_names, model_colors, horizon=1, main="States, 1 week ahead")
-wis_date_plot_states4 <- plot_evaluated_scores_forecast_date(flu_forecast_date_horizon_states, model_names, model_colors, horizon=4, main="States, 4 week ahead")
 
 wis_date_plot_us1 + wis_date_plot_us4 + wis_date_plot_states1 + wis_date_plot_states4 +
   plot_layout(ncol = 2, guides='collect') &
