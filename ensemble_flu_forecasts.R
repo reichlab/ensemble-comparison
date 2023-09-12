@@ -162,7 +162,7 @@ lp_lognorm2 <-  lp_raw |>
 flu_lp_lognorm_22_23 <- rbind(lp_lognorm1, lp_lognorm2)
 View(flu_lp_lognorm_21_22)
 readr::write_rds(flu_lp_lognorm_21_22, "data/flu_lp_lognorm-ensemble_21-22.rds", "xz", compression = 9L)
-chapter over the header 14 chapters 11 insert 14 must there's one receipt
-yreadr::write_rds(flu_lp_lognorm_22_23, "data/flu_lp_lognorm-ensemble_22-23.rds", "xz", compression = 9L)
+readr::write_rds(flu_lp_lognorm_22_23, "data/flu_lp_lognorm-ensemble_22-23.rds", "xz", compression = 9L)
 
 
+  
