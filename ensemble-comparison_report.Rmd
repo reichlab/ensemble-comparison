@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: 
   pdf_document: 
     fig_width: 8
-    fig_height: 11
+    fig_height: 10.5
 indent: true
 fontsize: 12pt
 header-includes:
@@ -102,8 +102,8 @@ flu_scores_baseline <- readr::read_rds("data/flu_baseline_scores.rds")
 flu_scores_ensembles <- readr::read_rds("data/flu_scores_ensembles.rds")
 flu_scores_all <- rbind(flu_scores_ensembles, flu_scores_baseline)
 
-model_names <- c("Flusight-baseline", "mean-ensemble", "median-ensemble", "lp-normal")
-model_colors <- c("black", "#F8766D", "#00BA38", "#619CFF")
+model_names <- c("Flusight-baseline", "mean-ensemble", "median-ensemble", "lp-normal", "lp-lognormal")
+model_colors <- c("black", "#F8766D", "#B79F00", "#00BFC4", "#C77CFF")
 ```
 
 ## Plot Forecasts
@@ -241,7 +241,7 @@ flu_location <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables="location", baseline_name="Flusight-baseline")
 
 model_levels <- pull(flu_overall_states, model)
-plot_wis_loc(flu_scores_all, flu_truth_all, model_levels, baseline_name = "Flusight-baseline")
+wis_loc_plot <- plot_wis_loc(flu_scores_all, flu_truth_all, model_levels, baseline_name = "Flusight-baseline")
 ```
 
 
@@ -315,9 +315,11 @@ wis_loc_plot4_2223 <- flu_scores_all |>
 
 
 # Conclusions/Discussion
-Overall, the vincent median ensemble is the best of the ensembles. However, there are several instances where the linear pool with normal tails (and occasionally the vincent mean ensemble) beats the vincent median; namely, the 1-week ahead horizon for both geographic scales (though it's more pronounced for the averaged states level). A more granular breakdown reveals that this deviation from the overall trend occurs mostly during the 2022-2023 season, specifically during times of high change. These patterns in which the vincent mean ensemble generally performs best, except for the one week ahead horizon with combined seasons or just the 2022-2023 season when the linear pool with normal tails perform slightly better.
+Overall, the vincent median ensemble is the best of the ensembles. However, there are several instances where the two linear pools (and occasionally the vincent mean ensemble) beat the vincent median; namely, the 1-week ahead horizon for both geographic scales (though it's more pronounced for the averaged states level). A more granular breakdown reveals that this deviation from the overall trend occurs mostly during the 2022-2023 season, specifically during times of high change. These patterns in which the vincent mean ensemble generally performs best, except for the one week ahead horizon with combined seasons or just the 2022-2023 season when the linear pools perform slightly better.
 
-If the CDC is mainly interested in communicating forecasts with short-term horizons (e.g. 1-2 week ahead), the linear pool with normal tails may be worth further investigation, especially during periods of rapid change. Next steps also of course include exploring a linear pool with lognormal tails.
+There is only a marginal difference in performance between the two linear pools, even for the week-by-week break down of results. This suggests at least one of three scenarios: 1) the common quantile interpretation from monotonic splines plays a bigger role in defining the shape of the resulting probabilistic distribution the extrapolation for the tails, 2) there is not a meaningful difference between coercing negative values to zero for the linear pool with normal tails and using a linear pool with lognormal tails that are naturally non-negative, or 3) the original forecasts (which are non-negative) ensemble together in such a way that there is negligible difference between the two linear pools, but this may not always be the case for a different set of forecasts.
+
+If the CDC is mainly interested in communicating forecasts with short-term horizons (e.g. 1-2 week ahead), a linear pool ensemble may be worth further investigation, especially during periods of rapid change. Either type of tail distribution would be acceptable, though normal tails with negative values coerced to zero may be preferred simply due to shorter computation time.
 
 
 # References
