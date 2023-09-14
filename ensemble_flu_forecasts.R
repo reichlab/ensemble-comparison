@@ -86,31 +86,31 @@ flu_baseline_all <- flu_baseline_all |>
 flu_mean_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vector) {
   generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                     dates_vector, include_baseline=FALSE,
-                                    ensemble_type="mean", dist_type=NULL) 
+                                    ensemble_type="mean", tail_dist=NULL) 
 })
                                     
 flu_mean_22_23 <- purrr::map_dfr(flu_dates_22_23, .f = function(dates_vector) {
   generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                     dates_vector, include_baseline=FALSE,
-                                    ensemble_type="mean", dist_type=NULL) 
+                                    ensemble_type="mean", tail_dist=NULL) 
 })
 
 flu_median_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vector) {
   generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                     dates_vector, include_baseline=FALSE,
-                                    ensemble_type="median", dist_type=NULL) 
+                                    ensemble_type="median", tail_dist=NULL) 
 })
                                     
 flu_median_22_23 <- purrr::map_dfr(flu_dates_22_23, .f = function(dates_vector) {
   generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                     dates_vector, include_baseline=FALSE,
-                                    ensemble_type="median", dist_type=NULL) 
+                                    ensemble_type="median", tail_dist=NULL) 
 })
 
 flu_linear_pool_21_22 <- purrr::map_dfr(flu_dates_21_22, .f = function(dates_vector) {
   generate_flu_ensemble_single_date(zoltar_connection, project_url,
                                     dates_vector, include_baseline=FALSE,
-                                    ensemble_type="linear_pool", dist_type=NULL) 
+                                    ensemble_type="linear_pool", tail_dist=NULL) 
 })
                     
 
@@ -123,7 +123,7 @@ lp_ensemble1 <-  lp_raw |>
   dplyr::group_split(forecast_date) |>
   purrr::map_dfr(.f = function(split_forecasts) {
     generate_flu_ensemble(split_forecasts, include_baseline=FALSE, 
-                          ensemble_type="linear_pool", dist_type=NULL)
+                          ensemble_type="linear_pool", tail_dist=NULL)
   }) 
   
 lp_ensemble2 <-  lp_raw |>
@@ -132,7 +132,7 @@ lp_ensemble2 <-  lp_raw |>
   purrr::map_dfr(.f = function(split_forecasts) {
     generate_flu_ensemble(split_forecasts, include_baseline=FALSE, 
 
-                          ensemble_type="linear_pool", dist_type=NULL)
+                          ensemble_type="linear_pool", tail_dist=NULL)
   }) 
 
 flu_linear_pool_22_23 <- rbind(lp_ensemble1, lp_ensemble2)
@@ -160,7 +160,7 @@ lp_lognorm2 <-  lp_raw |>
     generate_flu_ensemble(split_forecasts, include_baseline=FALSE, 
                           ensemble_type="linear_pool", tail_dist="lnorm")
   }) 
-readr::write_rds(lp_lognorm1, "data/flu_lp_lognorm1.rds", "xz", compression = 9L)
+readr::write_rds(lp_lognorm2, "data/flu_lp_lognorm2.rds", "xz", compression = 9L)
   
 lp_lognorm3 <-  lp_raw |>
   filter(forecast_date %in% flu_dates_22_23[21:31]) |>
@@ -169,9 +169,10 @@ lp_lognorm3 <-  lp_raw |>
     generate_flu_ensemble(split_forecasts, include_baseline=FALSE, 
                           ensemble_type="linear_pool", tail_dist="lnorm")
   }) 
+readr::write_rds(lp_lognorm3, "data/flu_lp_lognorm3.rds", "xz", compression = 9L)
 
-flu_lp_lognorm_22_23 <- rbind(lp_lognorm1, lp_lognorm2)
-View(flu_lp_lognorm_21_22)
+flu_lp_lognorm_22_23 <- rbind(lp_lognorm1, lp_lognorm2, lp_lognorm3)
+View(flu_lp_lognorm_22_23)
 readr::write_rds(flu_lp_lognorm_21_22, "data/flu_lp_lognorm-ensemble_21-22.rds", "xz", compression = 9L)
 readr::write_rds(flu_lp_lognorm_22_23, "data/flu_lp_lognorm-ensemble_22-23.rds", "xz", compression = 9L)
 
