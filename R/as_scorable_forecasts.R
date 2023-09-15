@@ -49,12 +49,15 @@ as_scorable_forecasts <- function(model_outputs, reference_date_col="forecast_da
       dplyr::mutate(target_end_date=case_when(
         temporal_resolution %in% c("d", "day") ~ forecast_date + lubridate::days(horizon),
         temporal_resolution %in% c("w", "wk", "week") ~ forecast_date + lubridate::weeks(horizon),
-        temporal_resolution %in% c("m", "mth", "mnth", "month") ~ forecast_date + lubridate::months(horizon),
+        temporal_resolution %in% c("m", "mth", "mnth", "month") ~ forecast_date %m+% months(horizon),
         temporal_resolution %in% c("y", "yr", "year") ~ forecast_date + lubridate::years(horizon),
         .default = forecast_date), 
-      .before = output_type) 
+      .before = type) 
   }
-                  
+  
+  scorable_outputs <- model_outputs |>                
     dplyr::select(model, forecast_date, location, horizon, temporal_resolution, 
                   target_variable, target_end_date, type, quantile, value)
+
+  return (scorable_outputs)
 }
