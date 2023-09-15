@@ -1,12 +1,35 @@
 #' Reformat model outputs stored as a `model_output_tbl` class to that of
-#' a `data.frame` that can be scored by `covidHubUtils::score_forecasts()` 
+#' a `data.frame` that can be scored by `covidHubUtils::score_forecasts()`.
+#' The supplied `model_output_tbl` should have columns defining properties
+#' akin to reference states, locations, horizons, and targets.
 #'
 #' @param model_outputs an object of class `model_output_tbl` with component
 #'   model outputs (e.g., predictions).
 #' @param reference_date_col `character` string of the name of the column
-#'   containing the reference dates for the forecasts.  Defaults to "forecast_date"
+#'   containing the reference dates for the forecasts. Defaults to 
+#'   "forecast_date".
+#' @param location_col `character` string of the name of the column 
+#'   containing the locations for the forecasts. Defaults to "location".
+#' @param horizon_col `character` string of the name of the column 
+#'   containing the horizons for the forecasts. Defaults to "horizon".
+#' @param target_col `character` string of the name of the column 
+#'   containing the targets for the forecasts. Defaults to "target". If 
+#'   `temp_res_col` is NULL, the target column in `model_outputs` is assumed
+#'   to contain targets of the form "[temporal resolution] ahead [target]", 
+#'   such as "wk ahead inc flu hosp".
+#' @param temp_res_col `character` string of the name of the column 
+#'   containing the temporal resolutions for the forecasts. Defaults to 
+#'   "temporal_resolution". Should be set to NULL if no such column exists,
+#'   in which case the column will be created from the existing target column.
+#' @param target_end_date_col `character` string of the name of the column 
+#'   containing the target end dates for the forecasts. Defaults to 
+#'   "target_end_date". Should be set to NULL if no such column exists, in
+#'   which case the column will be created from the temporal resolution column.
 #'
-#' @return a `data.frame` of reformatted model outputs to be fed into `covidHubUtils::score_forecasts()`
+#' @return a `data.frame` of reformatted model outputs to be fed into 
+#'   `covidHubUtils::score_forecasts()` with 10 total columns: model,
+#'   forecast_date, location, horizon, temporal_resolution, target_variable,
+#'   target_end_date, type, quantile, value.
 #' @export
 #'
 #' @examples
