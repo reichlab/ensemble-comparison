@@ -15,7 +15,8 @@
 #' @param target_col `character` string of the name of the column 
 #'   containing the targets for the forecasts. Defaults to "target". If 
 #'   `temp_res_col` is NULL, the target column in `model_outputs` is assumed
-#'   to contain targets of the form "[temporal resolution] ahead [target]", 
+#'   to contain targets of the form "[temporal resolution] [target]" or 
+#'   "[temporal resolution] ahead [target]".
 #'   such as "wk ahead inc flu hosp".
 #' @param temp_res_col `character` string of the name of the column 
 #'   containing the temporal resolutions for the forecasts. Defaults to 
@@ -37,11 +38,16 @@ as_scorable_forecasts <- function(model_outputs, reference_date_col="forecast_da
 
   model_outputs <- model_outputs |> 
     dplyr::rename(model = model_id, type = output_type, quantile = output_type_id,
-                  forecast_date = reference_date_col, location = location_col, target = target_col) 
+                  forecast_date = reference_date_col, location = location_col, target_variable = target_col) 
   
   if (is.null(temp_res_col)) {
     model_outputs <- model_outputs |>
-      tidyr::separate(target, sep=" ", convert=TRUE, into=c("temporal_resolution", "ahead", "target_variable"), extra="merge") 
+      dplyr::rename(target = target_variable) |>
+      mutate(target = ifelse(
+        stringr::str_detect(target, "ahead"), 
+        stringr::str_replace(target, "ahead", "")|> stringr::str_squish(), 
+        target)) |>
+      tidyr::separate(target, sep=" ", convert=TRUE, into=c("temporal_resolution", "target_variable"), extra="merge")
   }
   
   if (is.null(target_end_date_col)) {
