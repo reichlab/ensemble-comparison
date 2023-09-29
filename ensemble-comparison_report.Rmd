@@ -62,6 +62,75 @@ source("R/evaluation_functions.R")
 ## Data 
 Flu incident hospitalization truth and forecasts are queried from zoltar for the 2021-2022 and 2022-23 seasons. This is the only target/time period evaluated currently.
 
+```{r read in truth}
+flu_dates_21_22 <- as.Date("2022-01-24") + weeks(0:21)
+flu_dates_22_23 <- as.Date("2022-10-17") + weeks(0:30)
+all_flu_dates <- c(flu_dates_21_22, flu_dates_22_23)
+hub_locations_flusight <- tibble(hub_locations_flusight)
+
+# Read in truth
+flu_truth_all <- readr::read_rds("data/flu_truth_all.rds")
+flu_truth_21_22 <- flu_truth_all |>
+  dplyr::filter(target_end_date < "2022-08-01")
+flu_truth_22_23 <- flu_truth_all |>
+  dplyr::filter(target_end_date > "2022-08-01")
+```
+
+```{r plot truth}
+flu_truth_plotting <- covidData::load_data(
+  spatial_resolution = c("national", "state"),
+  temporal_resolution = "weekly",
+  measure = "flu hospitalizations",
+  drop_last_date = FALSE
+) %>%
+  dplyr::left_join(covidData::fips_codes, by = "location") %>%
+  dplyr::transmute(
+    model="flu-truth",
+    target_variable="inc flu hosp",
+    target_end_date=date,
+    location,
+#    location_name = ifelse(location_name == "United States", "US", location_name),
+    value = inc) #%>%
+
+#load_truth("HealthData", "inc flu hosp", truth_end_date=as.Date("2023-08-01"), temporal_resolution="weekly", data_location = "covidData", hub="FluSight")
+
+flu_truth_plotting %>%
+  filter(
+    location == "US", 
+    target_end_date >= as.Date("2021-11-01"),
+    target_end_date <= as.Date("2023-06-02")
+  ) %>%
+ggplot(aes(x = target_end_date, y = value)) + 
+  geom_line() + 
+  geom_point() + 
+  geom_vline(xintercept = as.Date("2022-01-24"), linetype="dashed") +
+  geom_vline(xintercept = as.Date("2022-06-20"), linetype="solid") +
+  geom_vline(xintercept = as.Date("2022-10-17"), linetype="solid") +
+  geom_vline(xintercept = as.Date("2023-05-15"), linetype="solid") +
+  annotate(geom = "text", x = as.Date("2022-01-18"), y = 3000, 
+           label = "Forecasting Starts", size = 5, angle = 90) + 
+  annotate(geom = "text", x = as.Date("2022-06-14"), y = 2100, 
+           label = "Season Ends", size = 5, angle = 90) + 
+  annotate(geom = "text", x = as.Date("2022-10-11"), y = 2100, 
+           label = "Season Starts", size = 5, angle = 90) + 
+  annotate(geom = "text", x = as.Date("2023-05-20"), y = 2100, 
+           label = "Season Ends", size = 5, angle = 90) + 
+  annotate(geom = "text", x = as.Date("2022-03-02"), y = 25000, 
+           label = "2021-22 Season", size = 8, angle = 0) + 
+  annotate(geom = "text", x = as.Date("2023-02-05"), y = 25000, 
+           label = "2022-23 Season", size = 8, angle = 0) + 
+  scale_x_date(name=NULL, date_breaks = "4 month", minor_breaks = "2 month",
+               date_labels = "%b 20%y") + 
+  ylim(c(0, NA)) +
+  theme(axis.ticks.length.x = unit(0.75, "cm"),  
+        axis.text.x = element_text(vjust = 1, hjust = 0.5),
+        legend.position = "none") + 
+  theme_bw() +
+  labs(title = "Influenza US National Hospitalizations",
+       x = "Date", y = "Incident Influenza Hospitalizations")
+```
+
+
 ## Forecast locations 
 Forecasts are made for all 50 states, Washington DC, Puerto Rico, the Virgin Islands come and the US as a whole.
 1 - 4 week ahead incident flu hospitalizations
@@ -80,23 +149,11 @@ Only validation phase, no testing phase (assume that will be the upcoming season
 
 # Results
 
-```{r read in data}
-flu_dates_21_22 <- as.Date("2022-01-24") + weeks(0:21)
-flu_dates_22_23 <- as.Date("2022-10-17") + weeks(0:30)
-all_flu_dates <- c(flu_dates_21_22, flu_dates_22_23)
-hub_locations_flusight <- tibble(hub_locations_flusight)
-
-# Read in data
-flu_truth_all <- readr::read_rds("data/flu_truth_all.rds")
+```{r read in forecasts and scores}
 flu_files <- list.files(path="data", pattern="ensemble_", full.names=TRUE)
 flu_forecasts_ensembles <- purrr::map_dfr(flu_files, .f=read_rds) |>
     dplyr::select(model, forecast_date, location, horizon, temporal_resolution, 
                   target_variable, target_end_date, type, quantile, value)
-
-flu_truth_21_22 <- flu_truth_all |>
-  dplyr::filter(target_end_date < "2022-08-01")
-flu_truth_22_23 <- flu_truth_all |>
-  dplyr::filter(target_end_date > "2022-08-01")
 
 flu_scores_baseline <- readr::read_rds("data/flu_baseline_scores.rds")
 flu_scores_ensembles <- readr::read_rds("data/flu_scores_ensembles.rds")
