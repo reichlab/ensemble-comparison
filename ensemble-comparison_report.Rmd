@@ -246,6 +246,7 @@ wis_plot_us_2122 + wis_plot_us_2223 + wis_plot_states_2122+wis_plot_states_2223 
 flu_date_horizon_season_us <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date", "season"), baseline_name="Flusight-baseline", us_only=TRUE)
 
+# WIS
 wis_date_plot_us1_2122 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2021-2022") |>
   plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="US 2021-22, 1 week ahead")
@@ -262,6 +263,34 @@ wis_date_plot_us4_2223 <- flu_date_horizon_season_us |>
   
 wis_date_plot_us1_2122 + wis_date_plot_us1_2223 + 
   wis_date_plot_us4_2122 + wis_date_plot_us4_2223 + 
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+
+# 95% Coverage
+cov95_date_plot_us1_2122 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, y_var="cov95", main="US 2021-22, 1 week ahead") +
+  geom_jitter(height=0.05, width=0, mapping=aes(color=model)) +
+  coord_cartesian(ylim = c(0, 1.05))
+cov95_date_plot_us4_2122 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, y_var="cov95", main="US 2021-22, 4 week ahead") +
+  geom_jitter(height=0.05, width=0, mapping=aes(color=model)) +
+  coord_cartesian(ylim = c(0, 1.05))
+  
+cov95_date_plot_us1_2223 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, y_var="cov95", main="US 2022-23, 1 week ahead") +
+  geom_jitter(height=0.05, width=0, mapping=aes(color=model)) +
+  coord_cartesian(ylim = c(0, 1.05))
+cov95_date_plot_us4_2223 <- flu_date_horizon_season_us |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, y_var="cov95", main="US 2022-23, 4 week ahead") +
+  geom_jitter(height=0.05, width=0, mapping=aes(color=model)) +
+  coord_cartesian(ylim = c(0, 1.05))
+  
+cov95_date_plot_us1_2122 + cov95_date_plot_us1_2223 + 
+  cov95_date_plot_us4_2122 + cov95_date_plot_us4_2223 + 
   plot_layout(ncol = 2, guides='collect') &
   theme(legend.position='bottom')
 ```
@@ -287,6 +316,30 @@ wis_date_plot_states4_2223 <- flu_date_horizon_season_states |>
   
 wis_date_plot_states1_2122 + wis_date_plot_states1_2223 + 
   wis_date_plot_states4_2122 + wis_date_plot_states4_2223 + 
+  plot_layout(ncol = 2, guides='collect') &
+  theme(legend.position='bottom')
+
+# 95% Coverage
+cov95_date_plot_states1_2122 <- flu_date_horizon_season_states |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, y_var="cov95", main="States 2021-22, 1 week ahead") +
+  coord_cartesian(ylim = c(0, 1.05))
+cov95_date_plot_states4_2122 <- flu_date_horizon_season_states |>
+  dplyr::filter(season == "2021-2022") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, y_var="cov95", main="States 2021-22, 4 week ahead") +
+  coord_cartesian(ylim = c(0, 1.05))
+  
+cov95_date_plot_states1_2223 <- flu_date_horizon_season_states |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, y_var="cov95", main="States 2022-23, 1 week ahead") +
+  coord_cartesian(ylim = c(0, 1.05))
+cov95_date_plot_states4_2223 <- flu_date_horizon_season_states |>
+  dplyr::filter(season == "2022-2023") |>
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, y_var="cov95", main="States 2022-23, 4 week ahead") +
+  coord_cartesian(ylim = c(0, 1.05))
+  
+cov95_date_plot_states1_2122 + cov95_date_plot_states1_2223 + 
+  cov95_date_plot_states4_2122 + cov95_date_plot_states4_2223 + 
   plot_layout(ncol = 2, guides='collect') &
   theme(legend.position='bottom')
 ```
