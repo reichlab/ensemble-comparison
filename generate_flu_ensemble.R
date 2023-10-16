@@ -13,7 +13,9 @@ hub_con <- connect_hub(hub_path)
 current_forecasts <- hub_con |>
   dplyr::filter(
     reference_date == current_ref_date, 
-    stringr::str_detect(model_id, "FluSight", negate=TRUE) # remove baseline and ensembles
+    location != "78",
+    stringr::str_detect(model_id, "FluSight", negate=TRUE), # remove baseline and ensembles
+    stringr::str_detect(model_id, "Flusight", negate=TRUE) # remove baseline and ensembles
   ) |> 
   dplyr::collect() |>
   as_model_out_tbl() 
@@ -60,9 +62,8 @@ lop_norm_outputs <- quantile_forecasts |>
 categorical_name <- "FluSight-categorical"
 categorical_forecasts <- current_forecasts |>
   dplyr::filter(output_type == "pmf") |>
-  dplyr::filter(location != "78") |>
   dplyr::group_by(reference_date, target, target_end_date, output_type) |> # create appropriate groups for `complete`
-  tidyr::complete(model_id, horizon, location, output_type_id, fill=list(value=-1)) # add in missing output_type_ids and fill the missing values with zero
+  tidyr::complete(model_id, horizon, location, output_type_id, fill=list(value=0)) # add in missing output_type_ids and fill the missing values with zero
   
 categorical_ensemble_outputs <- categorical_forecasts |>
   hubEnsembles::simple_ensemble(
@@ -72,7 +73,7 @@ categorical_ensemble_outputs <- categorical_forecasts |>
   ) |>
   dplyr::select(-model_id)
 
-ensemble_name <- "FluSight-ensemble"
+ensemble_name <- "Flusight-ensemble"
 flusight_ensemble_outputs <- median_ensemble_outputs |>
   dplyr::bind_rows(categorical_ensemble_outputs)
 flusight_ensemble_path <- paste(hub_path, "/model-output/", ensemble_name, "/", current_ref_date, "-", ensemble_name, ".csv", sep="") 
