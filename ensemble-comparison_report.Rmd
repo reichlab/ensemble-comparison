@@ -150,6 +150,7 @@ Only validation phase, no testing phase (assume that will be the upcoming season
 # Results
 
 ```{r read in forecasts and scores}
+flu_forecasts_baseline <- readr::read_rds("data/flu_baseline_all.rds")
 flu_files <- list.files(path="data", pattern="ensemble_", full.names=TRUE)
 flu_forecasts_ensembles <- purrr::map_dfr(flu_files, .f=read_rds) |>
     dplyr::select(model, forecast_date, location, horizon, temporal_resolution, 
@@ -165,6 +166,43 @@ model_colors <- c("black", "#F8766D", "#B79F00", "#00BFC4", "#C77CFF")
 
 ## Plot Forecasts
 Will plot forecasts for all models, select locations (including US, highest count state, lowest count state/territory)
+
+```{r plot forecasts}
+flu_forecasts_wide <- flu_forecasts_ensembles |>
+  dplyr::bind_rows(flu_forecasts_baseline) |>
+  dplyr::left_join(hub_locations_flusight, by = c("location" = "fips")) |>
+  dplyr::mutate(horizon=as.character(horizon)) # |>
+#  dplyr::select(1:11, location_name, population, geo_type, geo_value, abbreviation, full_location_name)
+
+#locs_to_plot <-
+
+# Plot Forecasts
+p <- plot_forecasts(
+    forecast_data=filter(flu_forecasts_wide, forecast_date %in% all_flu_dates[seq(25, 53, 4)]),
+    hub = "FluSight",
+    location = "US",
+    truth_data = select(flu_truth_all, model, location, target_end_date, target_variable, value),
+    intervals = c(0.5, 0.95),
+    truth_source = "HealthData",
+    use_median_as_point = TRUE,
+    facet = model ~.,
+    facet_nrow = 4,
+    #           facet_scales = "free_y",
+    fill_by_model = TRUE,
+    plot=FALSE)
+
+p+
+    scale_x_date(name=NULL, limits = c(as.Date("2022-10-01"), as.Date("2023-06-08")), 
+                 #      scale_x_date(name=NULL, limits = c(as.Date("2023-02-01"), as.Date("2023-07-08")), 
+                 date_breaks = "2 months", date_labels = "%b '%y") +
+    #      coord_cartesian(ylim = c(700, 4000)) +
+    #      coord_cartesian(ylim = c(600, 2500)) +
+    #      coord_cartesian(ylim = c(0, max(flu_truth_all$value) * 1.5)) +
+    theme(axis.ticks.length.x = unit(0.5, "cm"),
+          axis.text.x = element_text(vjust = 7, hjust = -0.2),
+          legend.position = "none") 
+
+```
 
 ## Overall model performance
 
@@ -242,7 +280,7 @@ wis_plot_us_2122 + wis_plot_us_2223 + wis_plot_states_2122+wis_plot_states_2223 
 
 ## Model Performance by Week
 
-```{r By date US 2021-22, message=FALSE, warning=FALSE, fig.cap='Average h-week ahead WIS and 95% PI coverage for each model for the US national level.'}  
+```{r By date for US WIS, message=FALSE, warning=FALSE, fig.cap='Average h-week ahead WIS for each model at the US national level for both seasons.'}  
 flu_date_horizon_season_us <- flu_scores_all |>
   evaluate_flu_scores(grouping_variables=c("horizon", "forecast_date", "season"), baseline_name="Flusight-baseline", us_only=TRUE)
 
@@ -265,7 +303,11 @@ wis_date_plot_us1_2122 + wis_date_plot_us1_2223 +
   wis_date_plot_us4_2122 + wis_date_plot_us4_2223 + 
   plot_layout(ncol = 2, guides='collect') &
   theme(legend.position='bottom')
+```
 
+\newpage
+
+```{r By date for US 95 PI, message=FALSE, warning=FALSE, fig.cap='Average h-week ahead 95% PI coverage for each model at the US national level for both seasons.'}  
 # 95% Coverage
 cov95_date_plot_us1_2122 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2021-2022") |>
@@ -275,18 +317,17 @@ cov95_date_plot_us1_2122 <- flu_date_horizon_season_us |>
 cov95_date_plot_us4_2122 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2021-2022") |>
   plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, y_var="cov95", main="US 2021-22, 4 week ahead") +
-  geom_jitter(height=0.05, width=0, mapping=aes(color=model)) +
+  geom_jitter(height=0.05, width=0, mapping=aes()) +
   coord_cartesian(ylim = c(0, 1.05))
   
 cov95_date_plot_us1_2223 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2022-2023") |>
   plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, y_var="cov95", main="US 2022-23, 1 week ahead") +
-  geom_jitter(height=0.05, width=0, mapping=aes(color=model)) +
+  geom_jitter(height=0.05, width=0, mapping=aes(x=forecast_date, y=cov95, color=model)) +
   coord_cartesian(ylim = c(0, 1.05))
 cov95_date_plot_us4_2223 <- flu_date_horizon_season_us |>
   dplyr::filter(season == "2022-2023") |>
   plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, y_var="cov95", main="US 2022-23, 4 week ahead") +
-  geom_jitter(height=0.05, width=0, mapping=aes(color=model)) +
   coord_cartesian(ylim = c(0, 1.05))
   
 cov95_date_plot_us1_2122 + cov95_date_plot_us1_2223 + 
@@ -302,17 +343,17 @@ flu_date_horizon_season_states <- flu_scores_all |>
 
 wis_date_plot_states1_2122 <- flu_date_horizon_season_states |>
   dplyr::filter(season == "2021-2022") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="States, 1 week ahead")
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="States 2021-2022, 1 week ahead")
 wis_date_plot_states4_2122 <- flu_date_horizon_season_states |>
   dplyr::filter(season == "2021-2022") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="States, 4 week ahead")
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="States 2021-2022, 4 week ahead")
   
 wis_date_plot_states1_2223 <- flu_date_horizon_season_states |>
   dplyr::filter(season == "2022-2023") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="States, 1 week ahead")
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=1, main="States 2022-2023, 1 week ahead")
 wis_date_plot_states4_2223 <- flu_date_horizon_season_states |>
   dplyr::filter(season == "2022-2023") |>
-  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="States, 4 week ahead")
+  plot_evaluated_scores_forecast_date(model_names, model_colors, h=4, main="States 2022-2023, 4 week ahead")
   
 wis_date_plot_states1_2122 + wis_date_plot_states1_2223 + 
   wis_date_plot_states4_2122 + wis_date_plot_states4_2223 + 
